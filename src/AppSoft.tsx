@@ -9,6 +9,7 @@ interface Team {
   name: string;
   shortName: string;
   flag: string;
+  flagClass?: string;
   primaryColor: string;
 }
 
@@ -139,7 +140,7 @@ const teams: Team[] = [
   { id: "cze", name: "Tsjechië", shortName: "CZE", flag: "🇨🇿", primaryColor: "#2563eb" },
   { id: "ecu", name: "Ecuador", shortName: "ECU", flag: "🇪🇨", primaryColor: "#eab308" },
   { id: "egy", name: "Egypte", shortName: "EGY", flag: "🇪🇬", primaryColor: "#dc2626" },
-  { id: "eng", name: "Engeland", shortName: "ENG", flag: "🏴", primaryColor: "#e5e7eb" },
+  { id: "eng", name: "Engeland", shortName: "ENG", flag: "", flagClass: "england", primaryColor: "#e5e7eb" },
   { id: "ned", name: "Nederland", shortName: "NED", flag: "🇳🇱", primaryColor: "#f97316" },
   { id: "bra", name: "Brazilië", shortName: "BRA", flag: "🇧🇷", primaryColor: "#16a34a" },
   { id: "arg", name: "Argentinië", shortName: "ARG", flag: "🇦🇷", primaryColor: "#38bdf8" },
@@ -161,7 +162,7 @@ const teams: Team[] = [
   { id: "por", name: "Portugal", shortName: "POR", flag: "🇵🇹", primaryColor: "#dc2626" },
   { id: "qat", name: "Qatar", shortName: "QAT", flag: "🇶🇦", primaryColor: "#7f1d1d" },
   { id: "ksa", name: "Saudi-Arabië", shortName: "KSA", flag: "🇸🇦", primaryColor: "#15803d" },
-  { id: "sco", name: "Schotland", shortName: "SCO", flag: "🏴", primaryColor: "#1d4ed8" },
+  { id: "sco", name: "Schotland", shortName: "SCO", flag: "", flagClass: "scotland", primaryColor: "#1d4ed8" },
   { id: "sen", name: "Senegal", shortName: "SEN", flag: "🇸🇳", primaryColor: "#16a34a" },
   { id: "rsa", name: "Zuid-Afrika", shortName: "RSA", flag: "🇿🇦", primaryColor: "#16a34a" },
   { id: "esp", name: "Spanje", shortName: "ESP", flag: "🇪🇸", primaryColor: "#eab308" },
@@ -194,326 +195,78 @@ const venues: Venue[] = [
 ];
 
 const matches: Match[] = [
-  {
-    id: "m1",
-    stage: "Groep A",
-    kickoff: "2026-06-11T21:00:00+02:00",
-    venueId: "mexico-city",
-    homeTeamId: "mex",
-    awayTeamId: "rsa",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m2",
-    stage: "Groep A",
-    kickoff: "2026-06-12T04:00:00+02:00",
-    venueId: "guadalajara",
-    homeTeamId: "kor",
-    awayTeamId: "cze",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m3",
-    stage: "Groep B",
-    kickoff: "2026-06-12T21:00:00+02:00",
-    venueId: "toronto",
-    homeTeamId: "can",
-    awayTeamId: "bih",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m4",
-    stage: "Groep D",
-    kickoff: "2026-06-13T03:00:00+02:00",
-    venueId: "la",
-    homeTeamId: "usa",
-    awayTeamId: "par",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m5",
-    stage: "Groep B",
-    kickoff: "2026-06-13T21:00:00+02:00",
-    venueId: "sf-bay",
-    homeTeamId: "qat",
-    awayTeamId: "sui",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m6",
-    stage: "Groep C",
-    kickoff: "2026-06-14T00:00:00+02:00",
-    venueId: "ny-nj",
-    homeTeamId: "bra",
-    awayTeamId: "mar",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m7",
-    stage: "Groep C",
-    kickoff: "2026-06-14T03:00:00+02:00",
-    venueId: "boston",
-    homeTeamId: "hai",
-    awayTeamId: "sco",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m8",
-    stage: "Groep D",
-    kickoff: "2026-06-14T06:00:00+02:00",
-    venueId: "vancouver",
-    homeTeamId: "aus",
-    awayTeamId: "tur",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m9",
-    stage: "Groep E",
-    kickoff: "2026-06-14T19:00:00+02:00",
-    venueId: "houston",
-    homeTeamId: "ger",
-    awayTeamId: "cuw",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m10",
-    stage: "Groep F",
-    kickoff: "2026-06-14T22:00:00+02:00",
-    venueId: "dallas",
-    homeTeamId: "ned",
-    awayTeamId: "jpn",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m11",
-    stage: "Groep E",
-    kickoff: "2026-06-15T01:00:00+02:00",
-    venueId: "philadelphia",
-    homeTeamId: "civ",
-    awayTeamId: "ecu",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m12",
-    stage: "Groep F",
-    kickoff: "2026-06-15T04:00:00+02:00",
-    venueId: "monterrey",
-    homeTeamId: "swe",
-    awayTeamId: "tun",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m13",
-    stage: "Groep H",
-    kickoff: "2026-06-15T18:00:00+02:00",
-    venueId: "atlanta",
-    homeTeamId: "esp",
-    awayTeamId: "cpv",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m14",
-    stage: "Groep G",
-    kickoff: "2026-06-15T21:00:00+02:00",
-    venueId: "seattle",
-    homeTeamId: "bel",
-    awayTeamId: "egy",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m15",
-    stage: "Groep H",
-    kickoff: "2026-06-16T00:00:00+02:00",
-    venueId: "miami",
-    homeTeamId: "ksa",
-    awayTeamId: "uru",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m16",
-    stage: "Groep G",
-    kickoff: "2026-06-16T03:00:00+02:00",
-    venueId: "la",
-    homeTeamId: "irn",
-    awayTeamId: "nzl",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m17",
-    stage: "Groep I",
-    kickoff: "2026-06-16T21:00:00+02:00",
-    venueId: "ny-nj",
-    homeTeamId: "fra",
-    awayTeamId: "sen",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m18",
-    stage: "Groep I",
-    kickoff: "2026-06-17T00:00:00+02:00",
-    venueId: "boston",
-    homeTeamId: "irq",
-    awayTeamId: "nor",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m19",
-    stage: "Groep J",
-    kickoff: "2026-06-17T03:00:00+02:00",
-    venueId: "kansas",
-    homeTeamId: "arg",
-    awayTeamId: "alg",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m20",
-    stage: "Groep J",
-    kickoff: "2026-06-17T06:00:00+02:00",
-    venueId: "sf-bay",
-    homeTeamId: "aut",
-    awayTeamId: "jor",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m21",
-    stage: "Groep K",
-    kickoff: "2026-06-17T19:00:00+02:00",
-    venueId: "houston",
-    homeTeamId: "por",
-    awayTeamId: "cod",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m22",
-    stage: "Groep L",
-    kickoff: "2026-06-17T22:00:00+02:00",
-    venueId: "dallas",
-    homeTeamId: "eng",
-    awayTeamId: "cro",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m23",
-    stage: "Groep L",
-    kickoff: "2026-06-18T01:00:00+02:00",
-    venueId: "toronto",
-    homeTeamId: "gha",
-    awayTeamId: "pan",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m24",
-    stage: "Groep K",
-    kickoff: "2026-06-18T04:00:00+02:00",
-    venueId: "mexico-city",
-    homeTeamId: "uzb",
-    awayTeamId: "col",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m25",
-    stage: "Groep A",
-    kickoff: "2026-06-18T18:00:00+02:00",
-    venueId: "atlanta",
-    homeTeamId: "cze",
-    awayTeamId: "rsa",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m28",
-    stage: "Groep A",
-    kickoff: "2026-06-20T03:00:00+02:00",
-    venueId: "guadalajara",
-    homeTeamId: "mex",
-    awayTeamId: "kor",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m33",
-    stage: "Groep F",
-    kickoff: "2026-06-20T19:00:00+02:00",
-    venueId: "houston",
-    homeTeamId: "ned",
-    awayTeamId: "swe",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m34",
-    stage: "Groep F",
-    kickoff: "2026-06-21T06:00:00+02:00",
-    venueId: "monterrey",
-    homeTeamId: "tun",
-    awayTeamId: "jpn",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m35",
-    stage: "Groep A",
-    kickoff: "2026-06-25T03:00:00+02:00",
-    venueId: "mexico-city",
-    homeTeamId: "cze",
-    awayTeamId: "mex",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m36",
-    stage: "Groep A",
-    kickoff: "2026-06-25T03:00:00+02:00",
-    venueId: "monterrey",
-    homeTeamId: "rsa",
-    awayTeamId: "kor",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m37",
-    stage: "Groep F",
-    kickoff: "2026-06-26T01:00:00+02:00",
-    venueId: "dallas",
-    homeTeamId: "jpn",
-    awayTeamId: "swe",
-    status: "scheduled",
-    events: [],
-  },
-  {
-    id: "m38",
-    stage: "Groep F",
-    kickoff: "2026-06-26T01:00:00+02:00",
-    venueId: "kansas",
-    homeTeamId: "tun",
-    awayTeamId: "ned",
-    status: "scheduled",
-    events: [],
-  },
+  { id: "m1", stage: "Groep A", kickoff: "2026-06-11T21:00:00+02:00", venueId: "mexico-city", homeTeamId: "mex", awayTeamId: "rsa", status: "scheduled", events: [] },
+  { id: "m2", stage: "Groep A", kickoff: "2026-06-12T04:00:00+02:00", venueId: "guadalajara", homeTeamId: "kor", awayTeamId: "cze", status: "scheduled", events: [] },
+  { id: "m3", stage: "Groep B", kickoff: "2026-06-12T21:00:00+02:00", venueId: "toronto", homeTeamId: "can", awayTeamId: "bih", status: "scheduled", events: [] },
+  { id: "m4", stage: "Groep D", kickoff: "2026-06-13T03:00:00+02:00", venueId: "la", homeTeamId: "usa", awayTeamId: "par", status: "scheduled", events: [] },
+  { id: "m5", stage: "Groep B", kickoff: "2026-06-13T21:00:00+02:00", venueId: "sf-bay", homeTeamId: "qat", awayTeamId: "sui", status: "scheduled", events: [] },
+  { id: "m6", stage: "Groep C", kickoff: "2026-06-14T00:00:00+02:00", venueId: "boston", homeTeamId: "bra", awayTeamId: "mar", status: "scheduled", events: [] },
+  { id: "m7", stage: "Groep C", kickoff: "2026-06-14T03:00:00+02:00", venueId: "ny-nj", homeTeamId: "hai", awayTeamId: "sco", status: "scheduled", events: [] },
+  { id: "m8", stage: "Groep D", kickoff: "2026-06-14T06:00:00+02:00", venueId: "vancouver", homeTeamId: "aus", awayTeamId: "tur", status: "scheduled", events: [] },
+  { id: "m9", stage: "Groep E", kickoff: "2026-06-14T19:00:00+02:00", venueId: "houston", homeTeamId: "ger", awayTeamId: "cuw", status: "scheduled", events: [] },
+  { id: "m10", stage: "Groep F", kickoff: "2026-06-14T22:00:00+02:00", venueId: "dallas", homeTeamId: "ned", awayTeamId: "jpn", status: "scheduled", events: [] },
+  { id: "m11", stage: "Groep E", kickoff: "2026-06-15T01:00:00+02:00", venueId: "philadelphia", homeTeamId: "civ", awayTeamId: "ecu", status: "scheduled", events: [] },
+  { id: "m12", stage: "Groep F", kickoff: "2026-06-15T04:00:00+02:00", venueId: "monterrey", homeTeamId: "swe", awayTeamId: "tun", status: "scheduled", events: [] },
+  { id: "m13", stage: "Groep H", kickoff: "2026-06-15T18:00:00+02:00", venueId: "atlanta", homeTeamId: "esp", awayTeamId: "cpv", status: "scheduled", events: [] },
+  { id: "m14", stage: "Groep G", kickoff: "2026-06-15T21:00:00+02:00", venueId: "seattle", homeTeamId: "bel", awayTeamId: "egy", status: "scheduled", events: [] },
+  { id: "m15", stage: "Groep H", kickoff: "2026-06-16T00:00:00+02:00", venueId: "miami", homeTeamId: "ksa", awayTeamId: "uru", status: "scheduled", events: [] },
+  { id: "m16", stage: "Groep G", kickoff: "2026-06-16T03:00:00+02:00", venueId: "la", homeTeamId: "irn", awayTeamId: "nzl", status: "scheduled", events: [] },
+  { id: "m17", stage: "Groep I", kickoff: "2026-06-16T21:00:00+02:00", venueId: "ny-nj", homeTeamId: "fra", awayTeamId: "sen", status: "scheduled", events: [] },
+  { id: "m18", stage: "Groep I", kickoff: "2026-06-17T00:00:00+02:00", venueId: "boston", homeTeamId: "irq", awayTeamId: "nor", status: "scheduled", events: [] },
+  { id: "m19", stage: "Groep J", kickoff: "2026-06-17T03:00:00+02:00", venueId: "kansas", homeTeamId: "arg", awayTeamId: "alg", status: "scheduled", events: [] },
+  { id: "m20", stage: "Groep J", kickoff: "2026-06-17T06:00:00+02:00", venueId: "sf-bay", homeTeamId: "aut", awayTeamId: "jor", status: "scheduled", events: [] },
+  { id: "m21", stage: "Groep K", kickoff: "2026-06-17T19:00:00+02:00", venueId: "houston", homeTeamId: "por", awayTeamId: "cod", status: "scheduled", events: [] },
+  { id: "m22", stage: "Groep L", kickoff: "2026-06-17T22:00:00+02:00", venueId: "dallas", homeTeamId: "eng", awayTeamId: "cro", status: "scheduled", events: [] },
+  { id: "m23", stage: "Groep L", kickoff: "2026-06-18T01:00:00+02:00", venueId: "toronto", homeTeamId: "gha", awayTeamId: "pan", status: "scheduled", events: [] },
+  { id: "m24", stage: "Groep K", kickoff: "2026-06-18T04:00:00+02:00", venueId: "mexico-city", homeTeamId: "uzb", awayTeamId: "col", status: "scheduled", events: [] },
+  { id: "m25", stage: "Groep A", kickoff: "2026-06-18T18:00:00+02:00", venueId: "atlanta", homeTeamId: "cze", awayTeamId: "rsa", status: "scheduled", events: [] },
+  { id: "m26", stage: "Groep B", kickoff: "2026-06-18T21:00:00+02:00", venueId: "la", homeTeamId: "sui", awayTeamId: "bih", status: "scheduled", events: [] },
+  { id: "m27", stage: "Groep B", kickoff: "2026-06-19T00:00:00+02:00", venueId: "vancouver", homeTeamId: "can", awayTeamId: "qat", status: "scheduled", events: [] },
+  { id: "m28", stage: "Groep A", kickoff: "2026-06-20T03:00:00+02:00", venueId: "guadalajara", homeTeamId: "mex", awayTeamId: "kor", status: "scheduled", events: [] },
+  { id: "m29", stage: "Groep D", kickoff: "2026-06-19T21:00:00+02:00", venueId: "seattle", homeTeamId: "usa", awayTeamId: "aus", status: "scheduled", events: [] },
+  { id: "m30", stage: "Groep C", kickoff: "2026-06-20T00:00:00+02:00", venueId: "philadelphia", homeTeamId: "sco", awayTeamId: "mar", status: "scheduled", events: [] },
+  { id: "m31", stage: "Groep C", kickoff: "2026-06-20T03:00:00+02:00", venueId: "boston", homeTeamId: "bra", awayTeamId: "hai", status: "scheduled", events: [] },
+  { id: "m32", stage: "Groep D", kickoff: "2026-06-20T06:00:00+02:00", venueId: "sf-bay", homeTeamId: "tur", awayTeamId: "par", status: "scheduled", events: [] },
+  { id: "m33", stage: "Groep F", kickoff: "2026-06-20T19:00:00+02:00", venueId: "houston", homeTeamId: "ned", awayTeamId: "swe", status: "scheduled", events: [] },
+  { id: "m34", stage: "Groep E", kickoff: "2026-06-20T22:00:00+02:00", venueId: "toronto", homeTeamId: "ger", awayTeamId: "civ", status: "scheduled", events: [] },
+  { id: "m35", stage: "Groep E", kickoff: "2026-06-21T02:00:00+02:00", venueId: "kansas", homeTeamId: "ecu", awayTeamId: "cuw", status: "scheduled", events: [] },
+  { id: "m36", stage: "Groep F", kickoff: "2026-06-21T06:00:00+02:00", venueId: "monterrey", homeTeamId: "tun", awayTeamId: "jpn", status: "scheduled", events: [] },
+  { id: "m37", stage: "Groep H", kickoff: "2026-06-21T18:00:00+02:00", venueId: "atlanta", homeTeamId: "esp", awayTeamId: "ksa", status: "scheduled", events: [] },
+  { id: "m38", stage: "Groep G", kickoff: "2026-06-21T21:00:00+02:00", venueId: "la", homeTeamId: "bel", awayTeamId: "irn", status: "scheduled", events: [] },
+  { id: "m39", stage: "Groep H", kickoff: "2026-06-22T00:00:00+02:00", venueId: "miami", homeTeamId: "uru", awayTeamId: "cpv", status: "scheduled", events: [] },
+  { id: "m40", stage: "Groep G", kickoff: "2026-06-22T03:00:00+02:00", venueId: "vancouver", homeTeamId: "nzl", awayTeamId: "egy", status: "scheduled", events: [] },
+  { id: "m41", stage: "Groep J", kickoff: "2026-06-22T19:00:00+02:00", venueId: "dallas", homeTeamId: "arg", awayTeamId: "aut", status: "scheduled", events: [] },
+  { id: "m42", stage: "Groep I", kickoff: "2026-06-22T23:00:00+02:00", venueId: "philadelphia", homeTeamId: "fra", awayTeamId: "irq", status: "scheduled", events: [] },
+  { id: "m43", stage: "Groep K", kickoff: "2026-06-23T19:00:00+02:00", venueId: "houston", homeTeamId: "por", awayTeamId: "uzb", status: "scheduled", events: [] },
+  { id: "m44", stage: "Groep I", kickoff: "2026-06-23T02:00:00+02:00", venueId: "ny-nj", homeTeamId: "nor", awayTeamId: "sen", status: "scheduled", events: [] },
+  { id: "m45", stage: "Groep J", kickoff: "2026-06-23T05:00:00+02:00", venueId: "sf-bay", homeTeamId: "jor", awayTeamId: "alg", status: "scheduled", events: [] },
+  { id: "m46", stage: "Groep L", kickoff: "2026-06-23T22:00:00+02:00", venueId: "boston", homeTeamId: "eng", awayTeamId: "gha", status: "scheduled", events: [] },
+  { id: "m47", stage: "Groep K", kickoff: "2026-06-24T04:00:00+02:00", venueId: "guadalajara", homeTeamId: "col", awayTeamId: "cod", status: "scheduled", events: [] },
+  { id: "m48", stage: "Groep L", kickoff: "2026-06-24T01:00:00+02:00", venueId: "toronto", homeTeamId: "pan", awayTeamId: "cro", status: "scheduled", events: [] },
+  { id: "m49", stage: "Groep B", kickoff: "2026-06-24T21:00:00+02:00", venueId: "vancouver", homeTeamId: "sui", awayTeamId: "can", status: "scheduled", events: [] },
+  { id: "m50", stage: "Groep B", kickoff: "2026-06-24T21:00:00+02:00", venueId: "seattle", homeTeamId: "bih", awayTeamId: "qat", status: "scheduled", events: [] },
+  { id: "m51", stage: "Groep C", kickoff: "2026-06-25T00:00:00+02:00", venueId: "miami", homeTeamId: "sco", awayTeamId: "bra", status: "scheduled", events: [] },
+  { id: "m52", stage: "Groep C", kickoff: "2026-06-25T00:00:00+02:00", venueId: "atlanta", homeTeamId: "mar", awayTeamId: "hai", status: "scheduled", events: [] },
+  { id: "m53", stage: "Groep A", kickoff: "2026-06-25T03:00:00+02:00", venueId: "mexico-city", homeTeamId: "cze", awayTeamId: "mex", status: "scheduled", events: [] },
+  { id: "m54", stage: "Groep A", kickoff: "2026-06-25T03:00:00+02:00", venueId: "monterrey", homeTeamId: "rsa", awayTeamId: "kor", status: "scheduled", events: [] },
+  { id: "m55", stage: "Groep E", kickoff: "2026-06-25T22:00:00+02:00", venueId: "philadelphia", homeTeamId: "cuw", awayTeamId: "civ", status: "scheduled", events: [] },
+  { id: "m56", stage: "Groep E", kickoff: "2026-06-25T22:00:00+02:00", venueId: "ny-nj", homeTeamId: "ecu", awayTeamId: "ger", status: "scheduled", events: [] },
+  { id: "m57", stage: "Groep F", kickoff: "2026-06-26T01:00:00+02:00", venueId: "dallas", homeTeamId: "jpn", awayTeamId: "swe", status: "scheduled", events: [] },
+  { id: "m58", stage: "Groep F", kickoff: "2026-06-26T01:00:00+02:00", venueId: "kansas", homeTeamId: "tun", awayTeamId: "ned", status: "scheduled", events: [] },
+  { id: "m59", stage: "Groep D", kickoff: "2026-06-26T04:00:00+02:00", venueId: "la", homeTeamId: "tur", awayTeamId: "usa", status: "scheduled", events: [] },
+  { id: "m60", stage: "Groep D", kickoff: "2026-06-26T04:00:00+02:00", venueId: "sf-bay", homeTeamId: "par", awayTeamId: "aus", status: "scheduled", events: [] },
+  { id: "m61", stage: "Groep I", kickoff: "2026-06-26T21:00:00+02:00", venueId: "boston", homeTeamId: "nor", awayTeamId: "fra", status: "scheduled", events: [] },
+  { id: "m62", stage: "Groep I", kickoff: "2026-06-26T21:00:00+02:00", venueId: "toronto", homeTeamId: "sen", awayTeamId: "irq", status: "scheduled", events: [] },
+  { id: "m63", stage: "Groep H", kickoff: "2026-06-27T02:00:00+02:00", venueId: "houston", homeTeamId: "cpv", awayTeamId: "ksa", status: "scheduled", events: [] },
+  { id: "m64", stage: "Groep H", kickoff: "2026-06-27T02:00:00+02:00", venueId: "guadalajara", homeTeamId: "uru", awayTeamId: "esp", status: "scheduled", events: [] },
+  { id: "m65", stage: "Groep G", kickoff: "2026-06-27T05:00:00+02:00", venueId: "seattle", homeTeamId: "egy", awayTeamId: "irn", status: "scheduled", events: [] },
+  { id: "m66", stage: "Groep G", kickoff: "2026-06-27T05:00:00+02:00", venueId: "vancouver", homeTeamId: "nzl", awayTeamId: "bel", status: "scheduled", events: [] },
+  { id: "m67", stage: "Groep L", kickoff: "2026-06-27T23:00:00+02:00", venueId: "ny-nj", homeTeamId: "pan", awayTeamId: "eng", status: "scheduled", events: [] },
+  { id: "m68", stage: "Groep L", kickoff: "2026-06-27T23:00:00+02:00", venueId: "philadelphia", homeTeamId: "cro", awayTeamId: "gha", status: "scheduled", events: [] },
+  { id: "m69", stage: "Groep K", kickoff: "2026-06-28T01:30:00+02:00", venueId: "miami", homeTeamId: "col", awayTeamId: "por", status: "scheduled", events: [] },
+  { id: "m70", stage: "Groep K", kickoff: "2026-06-28T01:30:00+02:00", venueId: "atlanta", homeTeamId: "cod", awayTeamId: "uzb", status: "scheduled", events: [] },
+  { id: "m71", stage: "Groep J", kickoff: "2026-06-28T04:00:00+02:00", venueId: "kansas", homeTeamId: "alg", awayTeamId: "aut", status: "scheduled", events: [] },
+  { id: "m72", stage: "Groep J", kickoff: "2026-06-28T04:00:00+02:00", venueId: "dallas", homeTeamId: "jor", awayTeamId: "arg", status: "scheduled", events: [] },
 ];
 
 const teamById = new Map(teams.map((team) => [team.id, team]));
@@ -576,6 +329,15 @@ function getMatchVenue(match: Match) {
   return venueById.get(match.venueId)!;
 }
 
+function matchSearchesCountry(match: Match, query: string) {
+  const search = query.trim().toLowerCase();
+  if (!search) return true;
+  const { home, away } = getMatchTeams(match);
+  return [home, away].some((team) =>
+    [team.name, team.shortName].some((value) => value.toLowerCase().includes(search))
+  );
+}
+
 function statusLabel(status: MatchStatus) {
   if (status === "scheduled") return "Gepland";
   if (status === "live") return "LIVE";
@@ -596,7 +358,7 @@ function eventIcon(type: EventType) {
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useLocalStorageState<string[]>("wk:favorites", []);
   const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
   const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
@@ -608,8 +370,11 @@ function App() {
   const scheduleMatches = sortedMatches.filter((match) => !isBeforeToday(match.kickoff));
 
   const selectedMatch = selectedMatchId ? matches.find((match) => match.id === selectedMatchId) ?? null : null;
-  const selectedTeam = selectedTeamId ? teamById.get(selectedTeamId) ?? null : null;
   const favoriteSet = new Set(favoriteIds);
+  const filterBySearch = (match: Match) => matchSearchesCountry(match, searchQuery);
+  const filteredScheduleMatches = scheduleMatches.filter(filterBySearch);
+  const filteredFavoriteMatches = sortedMatches.filter((match) => favoriteSet.has(match.id) && filterBySearch(match));
+  const filteredResultMatches = sortedMatches.filter(filterBySearch);
 
   useEffect(() => {
     if (!selectedMatchId) return;
@@ -662,12 +427,16 @@ function App() {
 
   return (
     <main className="app-shell">
-      <Header liveCount={matches.filter((match) => match.status === "live").length} />
+      <Header
+        liveCount={matches.filter((match) => match.status === "live").length}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+      />
 
       <section className="content">
         {activeTab === "schedule" && (
           <ScheduleView
-            matches={scheduleMatches}
+            matches={filteredScheduleMatches}
             favoriteSet={favoriteSet}
             onToggleFavorite={toggleFavorite}
             onSelectMatch={setSelectedMatchId}
@@ -675,7 +444,7 @@ function App() {
         )}
         {activeTab === "favorites" && (
           <FavoritesView
-            matches={sortedMatches.filter((match) => favoriteSet.has(match.id))}
+            matches={filteredFavoriteMatches}
             favoriteSet={favoriteSet}
             onToggleFavorite={toggleFavorite}
             onSelectMatch={setSelectedMatchId}
@@ -683,7 +452,7 @@ function App() {
         )}
         {activeTab === "results" && (
           <ResultsView
-            matches={sortedMatches}
+            matches={filteredResultMatches}
             favoriteSet={favoriteSet}
             onToggleFavorite={toggleFavorite}
             onSelectMatch={setSelectedMatchId}
@@ -699,41 +468,37 @@ function App() {
           isFavorite={favoriteSet.has(selectedMatch.id)}
           predictions={predictionsByMatch[selectedMatch.id] ?? []}
           clientId={clientId}
-          onClose={() => {
-            setSelectedMatchId(null);
-            setSelectedTeamId(null);
-          }}
+          onClose={() => setSelectedMatchId(null)}
           onToggleFavorite={() => toggleFavorite(selectedMatch.id)}
           onSavePrediction={savePrediction}
           onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
-          onSelectTeam={setSelectedTeamId}
-        />
-      )}
-
-      {selectedTeam && (
-        <TeamMatchesSheet
-          team={selectedTeam}
-          matches={sortedMatches.filter(
-            (match) => match.homeTeamId === selectedTeam.id || match.awayTeamId === selectedTeam.id
-          )}
-          favoriteSet={favoriteSet}
-          onClose={() => setSelectedTeamId(null)}
-          onToggleFavorite={toggleFavorite}
-          onSelectMatch={(matchId) => {
-            setSelectedMatchId(matchId);
-            setSelectedTeamId(null);
-          }}
         />
       )}
     </main>
   );
 }
 
-function Header({ liveCount }: { liveCount: number }) {
+function Header({
+  liveCount,
+  searchQuery,
+  onSearchChange,
+}: {
+  liveCount: number;
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+}) {
   return (
     <header className="topbar">
       <div className="app-mark" aria-label="WK 2026">WK 2026</div>
-      <div className="header-pills" aria-label="Samenvatting">
+      <div className="topbar-actions">
+        <label className="search-control" aria-label="Zoek op land">
+          <span>⌕</span>
+          <input
+            value={searchQuery}
+            onChange={(event) => onSearchChange(event.target.value)}
+            placeholder="Zoek land"
+          />
+        </label>
         {liveCount > 0 && <span className="pill live-dot">{liveCount} live</span>}
       </div>
     </header>
@@ -843,9 +608,10 @@ function MatchCard({
 }) {
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
+  const isDutchMatch = home.id === "ned" || away.id === "ned";
 
   return (
-    <article className={`match-card ${match.status}`} onClick={() => onSelectMatch(match.id)}>
+    <article className={`match-card ${match.status} ${isDutchMatch ? "dutch-match" : ""}`} onClick={() => onSelectMatch(match.id)}>
       <div className="match-meta">
         <span>{formatTime(match.kickoff)}</span>
         <small>{match.stage}</small>
@@ -878,11 +644,19 @@ function MatchCard({
 function TeamLine({ team, align = "left" }: { team: Team; align?: "left" | "right" }) {
   return (
     <div className={`team-line ${align}`}>
-      <span className="flag">{team.flag}</span>
+      <TeamFlag team={team} />
       <div>
         <strong>{team.name}</strong>
       </div>
     </div>
+  );
+}
+
+function TeamFlag({ team }: { team: Team }) {
+  return (
+    <span className={`flag ${team.flagClass ? `flag-${team.flagClass}` : ""}`} aria-label={`Vlag ${team.name}`}>
+      {team.flag}
+    </span>
   );
 }
 
@@ -916,7 +690,6 @@ function MatchDetail({
   onToggleFavorite,
   onSavePrediction,
   onDeletePrediction,
-  onSelectTeam,
 }: {
   match: Match;
   isFavorite: boolean;
@@ -926,7 +699,6 @@ function MatchDetail({
   onToggleFavorite: () => void;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
-  onSelectTeam: (teamId: string) => void;
 }) {
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
@@ -935,7 +707,6 @@ function MatchDetail({
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true">
       <section className="detail-sheet">
-        <div className="sheet-handle" />
         <section className="detail-match-card">
           <div className="detail-header">
             <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>
@@ -951,9 +722,9 @@ function MatchDetail({
           </div>
 
           <div className="detail-score">
-            <TeamHero team={home} onSelectTeam={onSelectTeam} />
+            <TeamHero team={home} />
             <ScoreBlock match={match} />
-            <TeamHero team={away} onSelectTeam={onSelectTeam} />
+            <TeamHero team={away} />
           </div>
 
           <p className="venue-line">{venue.name}</p>
@@ -969,74 +740,20 @@ function MatchDetail({
         />
 
         <GroupStandings match={match} />
+        <GroupFixtures match={match} />
       </section>
     </div>
   );
 }
 
-function TeamHero({ team, onSelectTeam }: { team: Team; onSelectTeam: (teamId: string) => void }) {
+function TeamHero({ team }: { team: Team }) {
   return (
-    <button
+    <div
       className="team-hero"
       style={{ "--team-color": team.primaryColor } as React.CSSProperties}
-      onClick={() => onSelectTeam(team.id)}
-      aria-label={`Bekijk alle wedstrijden van ${team.name}`}
     >
-      <span>{team.flag}</span>
+      <TeamFlag team={team} />
       <strong>{team.name}</strong>
-    </button>
-  );
-}
-
-function TeamMatchesSheet({
-  team,
-  matches,
-  favoriteSet,
-  onClose,
-  onToggleFavorite,
-  onSelectMatch,
-}: {
-  team: Team;
-  matches: Match[];
-  favoriteSet: Set<string>;
-  onClose: () => void;
-  onToggleFavorite: (matchId: string) => void;
-  onSelectMatch: (matchId: string) => void;
-}) {
-  return (
-    <div className="sheet-backdrop team-backdrop" role="dialog" aria-modal="true">
-      <section className="detail-sheet team-sheet">
-        <div className="sheet-handle" />
-        <div className="detail-header">
-          <button className="icon-button" onClick={onClose} aria-label="Terug naar wedstrijd">‹</button>
-          <span className="status-badge scheduled">{matches.length} wedstrijden</span>
-          <button className="icon-button" onClick={onClose} aria-label="Sluiten">×</button>
-        </div>
-
-        <div className="team-sheet-hero" style={{ "--team-color": team.primaryColor } as React.CSSProperties}>
-          <span>{team.flag}</span>
-          <div>
-            <p className="eyebrow">Land</p>
-            <h2>{team.name}</h2>
-            <small>{team.shortName} · WK 2026</small>
-          </div>
-        </div>
-
-        <h3 className="subsection-title">Alle wedstrijden van dit land</h3>
-        {matches.length ? (
-          <MatchList
-            matches={matches}
-            favoriteSet={favoriteSet}
-            onToggleFavorite={onToggleFavorite}
-            onSelectMatch={onSelectMatch}
-          />
-        ) : (
-          <EmptyState
-            title="Geen wedstrijden gevonden"
-            text="Voor dit land staan nog geen wedstrijden in de mockdata."
-          />
-        )}
-      </section>
     </div>
   );
 }
@@ -1058,6 +775,7 @@ function PredictionForm({
 }) {
   const { home, away } = getMatchTeams(match);
   const ownPrediction = predictions.find((prediction) => prediction.clientId === clientId);
+  const hasCurrentScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const [name, setName] = useState(ownPrediction?.name ?? "");
   const [homeScore, setHomeScore] = useState(String(ownPrediction?.homeScore ?? ""));
   const [awayScore, setAwayScore] = useState(String(ownPrediction?.awayScore ?? ""));
@@ -1104,6 +822,10 @@ function PredictionForm({
     }
   }
 
+  function matchesCurrentScore(prediction: Prediction) {
+    return hasCurrentScore && prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore;
+  }
+
   return (
     <section className="prediction-panel">
       <div className="panel-title">
@@ -1114,7 +836,7 @@ function PredictionForm({
         {predictions.length ? (
           predictions.map((prediction) => (
             <div className="saved-prediction" key={prediction.id ?? prediction.clientId ?? `${prediction.name}-${prediction.updatedAt}`}>
-              <span>{prediction.name}</span>
+              <span>{matchesCurrentScore(prediction) && <span className="prediction-trophy">🏆</span>}{prediction.name}</span>
               <div className="saved-prediction-score">
                 <strong>{prediction.homeScore} - {prediction.awayScore}</strong>
                 {prediction.clientId === clientId && (
@@ -1142,7 +864,7 @@ function PredictionForm({
             <input min="0" max="20" type="number" value={awayScore} onChange={(event) => setAwayScore(event.target.value)} disabled={disabled} />
           </label>
         </div>
-        <button className="primary-button" type="submit" disabled={disabled}>Opslaan</button>
+        <button className="primary-button" type="submit" disabled={disabled}>{ownPrediction ? "Aanpassen" : "Opslaan"}</button>
       </form>
       {message && <p className="feedback">{message}</p>}
     </section>
@@ -1251,7 +973,7 @@ function GroupStandings({ match }: { match: Match }) {
           {standings.map((row) => (
             <tr key={row.team.id}>
               <td>
-                <span>{row.team.flag}</span>
+                <TeamFlag team={row.team} />
                 {row.team.name}
               </td>
               <td>{row.wins}</td>
@@ -1263,6 +985,35 @@ function GroupStandings({ match }: { match: Match }) {
           ))}
         </tbody>
       </table>
+    </section>
+  );
+}
+
+function GroupFixtures({ match }: { match: Match }) {
+  const groupMatches = matches
+    .filter((groupMatch) => groupMatch.stage === match.stage)
+    .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
+
+  return (
+    <section className="group-fixtures-panel">
+      <div className="panel-title">
+        <h2>Wedstrijden {match.stage}</h2>
+      </div>
+      <div className="group-fixtures-list">
+        {groupMatches.map((groupMatch) => {
+          const { home, away } = getMatchTeams(groupMatch);
+          const venue = getMatchVenue(groupMatch);
+          return (
+            <div className="group-fixture-row" key={groupMatch.id}>
+              <div>
+                <span>{formatDate(groupMatch.kickoff)}</span>
+                <small>{formatTime(groupMatch.kickoff)} · {venue.name}</small>
+              </div>
+              <strong>{home.name} - {away.name}</strong>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
