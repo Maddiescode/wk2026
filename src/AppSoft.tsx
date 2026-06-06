@@ -41,11 +41,86 @@ interface Match {
 }
 
 interface Prediction {
+  id?: string;
   matchId: string;
   name: string;
   homeScore: number;
   awayScore: number;
   updatedAt: string;
+  clientId?: string;
+}
+
+type SupabasePredictionRow = {
+  id: string;
+  match_id: string;
+  name: string;
+  home_score: number;
+  away_score: number;
+  client_id: string;
+  created_at: string;
+};
+
+const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
+const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
+const SUPABASE_HEADERS = {
+  apikey: SUPABASE_ANON_KEY,
+  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+  "Content-Type": "application/json",
+};
+
+function createClientId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function mapPredictionRow(row: SupabasePredictionRow): Prediction {
+  return {
+    id: row.id,
+    matchId: row.match_id,
+    name: row.name,
+    homeScore: row.home_score,
+    awayScore: row.away_score,
+    updatedAt: row.created_at,
+    clientId: row.client_id,
+  };
+}
+
+async function fetchSharedPredictions(matchId: string) {
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?match_id=eq.${encodeURIComponent(matchId)}&order=created_at.desc`, {
+    headers: SUPABASE_HEADERS,
+  });
+  if (!response.ok) throw new Error("Could not load predictions");
+  const rows = await response.json();
+  return rows.map(mapPredictionRow);
+}
+
+async function saveSharedPrediction(prediction: Prediction, clientId: string) {
+  const existingId = prediction.id;
+  const body = {
+    match_id: prediction.matchId,
+    name: prediction.name,
+    home_score: prediction.homeScore,
+    away_score: prediction.awayScore,
+    client_id: clientId,
+  };
+
+  const response = await fetch(existingId ? `${PREDICTIONS_ENDPOINT}?id=eq.${existingId}&client_id=eq.${clientId}` : PREDICTIONS_ENDPOINT, {
+    method: existingId ? "PATCH" : "POST",
+    headers: { ...SUPABASE_HEADERS, Prefer: "return=representation" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error("Could not save prediction");
+  const rows = await response.json();
+  return mapPredictionRow(rows[0]);
+}
+
+async function deleteSharedPrediction(predictionId: string, clientId: string) {
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?id=eq.${predictionId}&client_id=eq.${clientId}`, {
+    method: "DELETE",
+    headers: SUPABASE_HEADERS,
+  });
+  if (!response.ok) throw new Error("Could not delete prediction");
 }
 
 const teams: Team[] = [
@@ -523,7 +598,8 @@ function App() {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [favoriteIds, setFavoriteIds] = useLocalStorageState<string[]>("wk:favorites", []);
-  const [predictions, setPredictions] = useLocalStorageState<Record<string, Prediction>>("wk:predictions", {});
+  const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
+  const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
@@ -535,24 +611,52 @@ function App() {
   const selectedTeam = selectedTeamId ? teamById.get(selectedTeamId) ?? null : null;
   const favoriteSet = new Set(favoriteIds);
 
+  useEffect(() => {
+    if (!selectedMatchId) return;
+    let isActive = true;
+
+    fetchSharedPredictions(selectedMatchId)
+      .then((sharedPredictions) => {
+        if (!isActive) return;
+        setPredictionsByMatch((current: Record<string, Prediction[]>) => ({
+          ...current,
+          [selectedMatchId]: sharedPredictions,
+        }));
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setPredictionsByMatch((current: Record<string, Prediction[]>) => ({
+          ...current,
+          [selectedMatchId]: current[selectedMatchId] ?? [],
+        }));
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedMatchId]);
+
   function toggleFavorite(matchId: string) {
     setFavoriteIds((current: string[]) =>
       current.includes(matchId) ? current.filter((id) => id !== matchId) : [...current, matchId]
     );
   }
 
-  function savePrediction(prediction: Prediction) {
-    setPredictions((current: Record<string, Prediction>) => ({
-      ...current,
-      [prediction.matchId]: prediction,
-    }));
+  async function savePrediction(prediction: Prediction) {
+    const localPrediction = { ...prediction, clientId, updatedAt: new Date().toISOString() };
+    const savedPrediction = await saveSharedPrediction(localPrediction, clientId);
+    setPredictionsByMatch((current: Record<string, Prediction[]>) => {
+      const existing = current[prediction.matchId] ?? [];
+      const withoutOwn = existing.filter((item) => item.clientId !== clientId);
+      return { ...current, [prediction.matchId]: [savedPrediction, ...withoutOwn] };
+    });
   }
 
-  function deletePrediction(matchId: string) {
-    setPredictions((current: Record<string, Prediction>) => {
-      const next = { ...current };
-      delete next[matchId];
-      return next;
+  async function deletePrediction(matchId: string, prediction?: Prediction) {
+    if (prediction?.id) await deleteSharedPrediction(prediction.id, clientId);
+    setPredictionsByMatch((current: Record<string, Prediction[]>) => {
+      const existing = current[matchId] ?? [];
+      return { ...current, [matchId]: existing.filter((item) => item.clientId !== clientId) };
     });
   }
 
@@ -593,14 +697,15 @@ function App() {
         <MatchDetail
           match={selectedMatch}
           isFavorite={favoriteSet.has(selectedMatch.id)}
-          prediction={predictions[selectedMatch.id]}
+          predictions={predictionsByMatch[selectedMatch.id] ?? []}
+          clientId={clientId}
           onClose={() => {
             setSelectedMatchId(null);
             setSelectedTeamId(null);
           }}
           onToggleFavorite={() => toggleFavorite(selectedMatch.id)}
           onSavePrediction={savePrediction}
-          onDeletePrediction={() => deletePrediction(selectedMatch.id)}
+          onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
           onSelectTeam={setSelectedTeamId}
         />
       )}
@@ -805,7 +910,8 @@ function StatusBadge({ status }: { status: MatchStatus }) {
 function MatchDetail({
   match,
   isFavorite,
-  prediction,
+  predictions,
+  clientId,
   onClose,
   onToggleFavorite,
   onSavePrediction,
@@ -814,11 +920,12 @@ function MatchDetail({
 }: {
   match: Match;
   isFavorite: boolean;
-  prediction?: Prediction;
+  predictions: Prediction[];
+  clientId: string;
   onClose: () => void;
   onToggleFavorite: () => void;
-  onSavePrediction: (prediction: Prediction) => void;
-  onDeletePrediction: () => void;
+  onSavePrediction: (prediction: Prediction) => Promise<void> | void;
+  onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
   onSelectTeam: (teamId: string) => void;
 }) {
   const { home, away } = getMatchTeams(match);
@@ -854,7 +961,8 @@ function MatchDetail({
 
         <PredictionForm
           match={match}
-          prediction={prediction}
+          predictions={predictions}
+          clientId={clientId}
           disabled={predictionClosed}
           onSavePrediction={onSavePrediction}
           onDeletePrediction={onDeletePrediction}
@@ -935,52 +1043,65 @@ function TeamMatchesSheet({
 
 function PredictionForm({
   match,
-  prediction,
+  predictions,
+  clientId,
   disabled,
   onSavePrediction,
   onDeletePrediction,
 }: {
   match: Match;
-  prediction?: Prediction;
+  predictions: Prediction[];
+  clientId: string;
   disabled: boolean;
-  onSavePrediction: (prediction: Prediction) => void;
-  onDeletePrediction: () => void;
+  onSavePrediction: (prediction: Prediction) => Promise<void> | void;
+  onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
 }) {
   const { home, away } = getMatchTeams(match);
-  const [name, setName] = useState(prediction?.name ?? "");
-  const [homeScore, setHomeScore] = useState(String(prediction?.homeScore ?? ""));
-  const [awayScore, setAwayScore] = useState(String(prediction?.awayScore ?? ""));
+  const ownPrediction = predictions.find((prediction) => prediction.clientId === clientId);
+  const [name, setName] = useState(ownPrediction?.name ?? "");
+  const [homeScore, setHomeScore] = useState(String(ownPrediction?.homeScore ?? ""));
+  const [awayScore, setAwayScore] = useState(String(ownPrediction?.awayScore ?? ""));
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    setName(prediction?.name ?? "");
-    setHomeScore(String(prediction?.homeScore ?? ""));
-    setAwayScore(String(prediction?.awayScore ?? ""));
-  }, [match.id, prediction?.name, prediction?.homeScore, prediction?.awayScore]);
+    setName(ownPrediction?.name ?? "");
+    setHomeScore(String(ownPrediction?.homeScore ?? ""));
+    setAwayScore(String(ownPrediction?.awayScore ?? ""));
+  }, [match.id, ownPrediction?.name, ownPrediction?.homeScore, ownPrediction?.awayScore]);
 
-  function submit(event: React.FormEvent) {
+  async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (disabled) return;
     if (!name.trim() || homeScore === "" || awayScore === "") {
       setMessage("Vul je naam en beide scores in.");
       return;
     }
-    onSavePrediction({
-      matchId: match.id,
-      name: name.trim(),
-      homeScore: Number(homeScore),
-      awayScore: Number(awayScore),
-      updatedAt: new Date().toISOString(),
-    });
-    setMessage("Voorspelling opgeslagen.");
+    try {
+      await onSavePrediction({
+        id: ownPrediction?.id,
+        matchId: match.id,
+        name: name.trim(),
+        homeScore: Number(homeScore),
+        awayScore: Number(awayScore),
+        updatedAt: new Date().toISOString(),
+        clientId,
+      });
+      setMessage("Voorspelling opgeslagen.");
+    } catch {
+      setMessage("Opslaan lukt nog niet. Controleer de Supabase tabel.");
+    }
   }
 
-  function deleteSavedPrediction() {
-    onDeletePrediction();
-    setName("");
-    setHomeScore("");
-    setAwayScore("");
-    setMessage("Voorspelling verwijderd.");
+  async function deleteSavedPrediction() {
+    try {
+      await onDeletePrediction(ownPrediction);
+      setName("");
+      setHomeScore("");
+      setAwayScore("");
+      setMessage("Voorspelling verwijderd.");
+    } catch {
+      setMessage("Verwijderen lukt nog niet. Controleer de Supabase rechten.");
+    }
   }
 
   return (
@@ -989,15 +1110,23 @@ function PredictionForm({
         <h2>Voorspellingen</h2>
         {disabled && <span>Voorspellingen zijn gesloten.</span>}
       </div>
-      {prediction && (
-        <div className="saved-prediction">
-          <span>{prediction.name}</span>
-          <div className="saved-prediction-score">
-            <strong>{prediction.homeScore} - {prediction.awayScore}</strong>
-            <button type="button" onClick={deleteSavedPrediction} aria-label="Verwijder voorspelling">×</button>
-          </div>
-        </div>
-      )}
+      <div className="prediction-list">
+        {predictions.length ? (
+          predictions.map((prediction) => (
+            <div className="saved-prediction" key={prediction.id ?? prediction.clientId ?? `${prediction.name}-${prediction.updatedAt}`}>
+              <span>{prediction.name}</span>
+              <div className="saved-prediction-score">
+                <strong>{prediction.homeScore} - {prediction.awayScore}</strong>
+                {prediction.clientId === clientId && (
+                  <button type="button" onClick={deleteSavedPrediction} aria-label="Verwijder voorspelling">×</button>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="prediction-empty">Nog geen voorspellingen.</p>
+        )}
+      </div>
       <form onSubmit={submit}>
         <label>
           Naam
