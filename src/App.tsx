@@ -466,10 +466,12 @@ function App() {
         <MatchDetail
           match={selectedMatch}
           isFavorite={favoriteSet.has(selectedMatch.id)}
+          favoriteSet={favoriteSet}
           predictions={predictionsByMatch[selectedMatch.id] ?? []}
           clientId={clientId}
           onClose={() => setSelectedMatchId(null)}
           onToggleFavorite={() => toggleFavorite(selectedMatch.id)}
+          onToggleMatchFavorite={toggleFavorite}
           onSavePrediction={savePrediction}
           onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
         />
@@ -684,19 +686,23 @@ function StatusBadge({ status }: { status: MatchStatus }) {
 function MatchDetail({
   match,
   isFavorite,
+  favoriteSet,
   predictions,
   clientId,
   onClose,
   onToggleFavorite,
+  onToggleMatchFavorite,
   onSavePrediction,
   onDeletePrediction,
 }: {
   match: Match;
   isFavorite: boolean;
+  favoriteSet: Set<string>;
   predictions: Prediction[];
   clientId: string;
   onClose: () => void;
   onToggleFavorite: () => void;
+  onToggleMatchFavorite: (matchId: string) => void;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
 }) {
@@ -740,7 +746,7 @@ function MatchDetail({
         />
 
         <GroupStandings match={match} />
-        <GroupFixtures match={match} />
+        <GroupFixtures match={match} favoriteSet={favoriteSet} onToggleFavorite={onToggleMatchFavorite} />
       </section>
     </div>
   );
@@ -989,7 +995,15 @@ function GroupStandings({ match }: { match: Match }) {
   );
 }
 
-function GroupFixtures({ match }: { match: Match }) {
+function GroupFixtures({
+  match,
+  favoriteSet,
+  onToggleFavorite,
+}: {
+  match: Match;
+  favoriteSet: Set<string>;
+  onToggleFavorite: (matchId: string) => void;
+}) {
   const groupMatches = matches
     .filter((groupMatch) => groupMatch.stage === match.stage)
     .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
@@ -1002,14 +1016,21 @@ function GroupFixtures({ match }: { match: Match }) {
       <div className="group-fixtures-list">
         {groupMatches.map((groupMatch) => {
           const { home, away } = getMatchTeams(groupMatch);
-          const venue = getMatchVenue(groupMatch);
+          const isFavorite = favoriteSet.has(groupMatch.id);
           return (
             <div className="group-fixture-row" key={groupMatch.id}>
               <div>
                 <span>{formatDate(groupMatch.kickoff)}</span>
-                <small>{formatTime(groupMatch.kickoff)} · {venue.name}</small>
+                <button
+                  className={`group-favorite-button ${isFavorite ? "active" : ""}`}
+                  type="button"
+                  onClick={() => onToggleFavorite(groupMatch.id)}
+                  aria-label={isFavorite ? "Verwijder favoriet" : "Markeer als favoriet"}
+                >
+                  {isFavorite ? "★" : "☆"}
+                </button>
               </div>
-              <strong>{home.name} - {away.name}</strong>
+              <strong>{formatTime(groupMatch.kickoff)} · {home.name} - {away.name}</strong>
             </div>
           );
         })}

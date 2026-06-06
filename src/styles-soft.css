@@ -502,6 +502,11 @@ button {
   font-weight: 650;
 }
 
+.icon-button.star {
+  background: transparent;
+  color: #ff5a00;
+}
+
 .detail-score {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
@@ -787,13 +792,22 @@ input:disabled {
 .group-fixture-row div {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 10px;
   color: var(--muted);
   font-size: 0.78rem;
 }
 
-.group-fixture-row small {
-  text-align: right;
+.group-favorite-button {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  color: #ff5a00;
+  font-size: 1.2rem;
+  line-height: 1;
 }
 
 .group-fixture-row strong {
