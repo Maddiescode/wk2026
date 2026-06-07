@@ -129,38 +129,6 @@ button {
   border-color: rgba(22, 163, 74, 0.22);
 }
 
-.update-icon-button {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(23, 27, 33, 0.06);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.46);
-  color: #7b838d;
-  font-size: 0.94rem;
-  font-weight: 500;
-}
-
-.update-icon-button.has-update {
-  border-color: rgba(249, 115, 22, 0.16);
-  background: rgba(255, 247, 237, 0.72);
-  color: #d65a12;
-}
-
-.update-icon-button.has-update::after {
-  content: "";
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 6px;
-  height: 6px;
-  border: 1px solid #fff;
-  border-radius: 50%;
-  background: #f97316;
-}
-
 .admin-dot {
   position: absolute;
   top: 5px;
@@ -212,6 +180,54 @@ button {
   color: #6b7280;
   font-size: 0.82rem;
   font-weight: 550;
+}
+
+.update-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: end center;
+  padding: 16px 14px calc(72px + env(safe-area-inset-bottom));
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.update-modal {
+  display: grid;
+  gap: 14px;
+  width: min(100%, 520px);
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(18px);
+}
+
+.update-modal h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.02rem;
+  font-weight: 600;
+}
+
+.update-modal p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.update-modal button {
+  min-height: 42px;
+  border: 1px solid rgba(249, 115, 22, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 237, 213, 0.8);
+  color: #c2410c;
+  font-weight: 600;
+}
+
+.update-modal button:disabled {
+  opacity: 0.62;
 }
 
 .section-title h2,

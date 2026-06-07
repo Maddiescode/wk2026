@@ -65,7 +65,7 @@ const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026-06-07-update-check";
+const APP_VERSION = "2026.06.07.1";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -370,6 +370,21 @@ function eventIcon(type: EventType) {
   return icons[type];
 }
 
+function isNewerVersion(remoteVersion: string, currentVersion: string) {
+  const remoteParts = remoteVersion.split(".").map((part) => Number(part));
+  const currentParts = currentVersion.split(".").map((part) => Number(part));
+  const length = Math.max(remoteParts.length, currentParts.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const remote = Number.isFinite(remoteParts[index]) ? remoteParts[index] : 0;
+    const current = Number.isFinite(currentParts[index]) ? currentParts[index] : 0;
+    if (remote > current) return true;
+    if (remote < current) return false;
+  }
+
+  return remoteVersion !== currentVersion;
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -379,6 +394,8 @@ function App() {
   const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
   const [adminUnlocked, setAdminUnlocked] = useLocalStorageState<boolean>("wk:admin", false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
@@ -419,14 +436,44 @@ function App() {
   }, [selectedMatchId]);
 
   useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let isActive = true;
+
+    navigator.serviceWorker
+      .register("./sw.js")
+      .then((registration) => {
+        if (!isActive) return;
+        setServiceWorkerRegistration(registration);
+        registration.update();
+
+        registration.addEventListener("updatefound", () => {
+          const worker = registration.installing;
+          if (!worker) return;
+          worker.addEventListener("statechange", () => {
+            if (worker.state === "installed" && navigator.serviceWorker.controller) {
+              setUpdateAvailable(true);
+            }
+          });
+        });
+      })
+      .catch(() => {
+        // The app still works without a service worker.
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
+  useEffect(() => {
     let isActive = true;
 
     async function checkForUpdate() {
       try {
-        const response = await fetch(`./version.json?check=${Date.now()}`, { cache: "no-store" });
+        const response = await fetch(`./version.json?ts=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) return;
         const data = await response.json();
-        if (isActive && data.version && data.version !== APP_VERSION) setUpdateAvailable(true);
+        if (isActive && data.version && isNewerVersion(data.version, APP_VERSION)) setUpdateAvailable(true);
       } catch {
         // Update checks should never interrupt app usage.
       }
@@ -499,10 +546,24 @@ function App() {
     }
   }
 
-  function refreshApp() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("updated", Date.now().toString());
-    window.location.replace(url.toString());
+  async function updateNow() {
+    setIsUpdating(true);
+
+    try {
+      const registration =
+        serviceWorkerRegistration ?? (await navigator.serviceWorker?.getRegistration?.());
+      await registration?.update();
+      registration?.waiting?.postMessage({ type: "SKIP_WAITING" });
+
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.filter((name) => name.startsWith("app-cache-")).map((name) => caches.delete(name)));
+      }
+    } catch {
+      // A plain reload is still the best fallback in standalone iOS mode.
+    } finally {
+      window.location.reload();
+    }
   }
 
   return (
@@ -512,10 +573,8 @@ function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         adminUnlocked={adminUnlocked}
-        updateAvailable={updateAvailable}
         onAdminLogin={loginAdmin}
         onAdminLogout={() => setAdminUnlocked(false)}
-        onRefreshApp={refreshApp}
       />
 
       <section className="content">
@@ -564,6 +623,8 @@ function App() {
           onAdminDeleteAll={() => deleteAllPredictionsAsAdmin(selectedMatch.id)}
         />
       )}
+
+      {updateAvailable && <UpdatePrompt isUpdating={isUpdating} onUpdate={updateNow} />}
     </main>
   );
 }
@@ -573,19 +634,15 @@ function Header({
   searchQuery,
   onSearchChange,
   adminUnlocked,
-  updateAvailable,
   onAdminLogin,
   onAdminLogout,
-  onRefreshApp,
 }: {
   liveCount: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   adminUnlocked: boolean;
-  updateAvailable: boolean;
   onAdminLogin: (code: string) => boolean;
   onAdminLogout: () => void;
-  onRefreshApp: () => void;
 }) {
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminCode, setAdminCode] = useState("");
@@ -655,17 +712,25 @@ function Header({
             </div>
           )}
         </div>
-        <button
-          className={`update-icon-button ${updateAvailable ? "has-update" : ""}`}
-          type="button"
-          onClick={onRefreshApp}
-          aria-label={updateAvailable ? "Update laden" : "App vernieuwen"}
-        >
-          ↻
-        </button>
         {liveCount > 0 && <span className="pill live-dot">{liveCount} live</span>}
       </div>
     </header>
+  );
+}
+
+function UpdatePrompt({ isUpdating, onUpdate }: { isUpdating: boolean; onUpdate: () => void }) {
+  return (
+    <div className="update-modal-backdrop" role="dialog" aria-modal="true" aria-label="Nieuwe versie beschikbaar">
+      <section className="update-modal">
+        <div>
+          <h2>Nieuwe versie beschikbaar</h2>
+          <p>Er staat een nieuwere versie van de WK-app klaar.</p>
+        </div>
+        <button type="button" onClick={onUpdate} disabled={isUpdating}>
+          {isUpdating ? "Updaten..." : "Update nu"}
+        </button>
+      </section>
+    </div>
   );
 }
 
