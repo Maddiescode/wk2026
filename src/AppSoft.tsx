@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.5";
+const APP_VERSION = "2026.06.07.6";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -402,24 +402,41 @@ function normalizeMatchName(value?: string) {
 
 function getTeamAliases(team: Team) {
   const aliases: Record<string, string[]> = {
+    alg: ["algeria"],
+    aus: ["australia"],
+    aut: ["austria"],
+    bel: ["belgium"],
     bih: ["bosniaandherzegovina", "bosniaherzegovina"],
+    bra: ["brazil"],
+    civ: ["cotedivoire", "cotedivoire", "ivorycoast", "coteivoire"],
     cod: ["congodr", "drcongo", "congodemocraticrepublic", "democraticrepublicofcongo"],
-    civ: ["cotedivoire", "ivorycoast", "coteivoire"],
-    cpv: ["capeverde", "caboverde", "kaapverdie"],
+    cpv: ["capeverde", "caboverde", "cabo verde", "kaapverdie"],
+    cro: ["croatia"],
     cuw: ["curacao", "curaçao"],
     cze: ["czechia", "czechrepublic", "tsjechie"],
+    egy: ["egypt"],
     eng: ["england", "engeland"],
+    esp: ["spain"],
+    fra: ["france"],
     ger: ["germany", "duitsland"],
     hai: ["haiti", "haiti"],
-    irn: ["iran", "iriran", "iriran"],
+    irn: ["iran", "iriran", "ir iran"],
+    irq: ["iraq"],
+    jor: ["jordan"],
     kor: ["korearepublic", "southkorea", "republicofkorea"],
+    mar: ["morocco"],
     ned: ["netherlands", "thenetherlands", "holland", "nederland"],
     nzl: ["newzealand", "nieuwzeeland"],
+    nor: ["norway"],
     rsa: ["southafrica", "zuidafrika"],
     sco: ["scotland", "schotland"],
+    ksa: ["saudiarabia", "saudi arabia"],
     sui: ["switzerland", "zwitserland"],
+    swe: ["sweden"],
+    tun: ["tunisia"],
     tur: ["turkiye", "turkey", "turkije"],
     usa: ["unitedstates", "unitedstatesofamerica", "usa", "verenigdestaten"],
+    uzb: ["uzbekistan"],
   };
   return [team.name, team.shortName, ...(aliases[team.id] ?? [])].map(normalizeMatchName);
 }
@@ -491,7 +508,7 @@ function mergeFootballDataMatches(baseMatches: Match[], providerMatches: Footbal
 
   const providerOnlyMatches = providerMatches
     .filter((providerMatch) => providerMatch.providerMatchId && !matchedProviderIds.has(providerMatch.providerMatchId))
-    .filter((providerMatch) => providerMatch.kickoff && providerMatch.homeTeamName && providerMatch.awayTeamName)
+    .filter((providerMatch) => providerMatch.kickoff)
     .map((providerMatch) => ({
       id: `fd-${providerMatch.providerMatchId}`,
       providerMatchId: providerMatch.providerMatchId,
