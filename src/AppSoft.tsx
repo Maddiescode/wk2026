@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.7";
+const APP_VERSION = "2026.06.07.8";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -460,16 +460,29 @@ function createProviderTeamId(name?: string, fallback = "team") {
 }
 
 function createFallbackTeam(teamId: string): Team {
-  const label = teamId.replace(/^api-/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-  const name = label ? label.charAt(0).toUpperCase() + label.slice(1) : "Nog onbekend";
   return {
     id: teamId,
-    name,
+    name: "Onbekend",
     shortName: "TBD",
     flag: "–",
     flagClass: "code",
     primaryColor: "#9ca3af",
   };
+}
+
+function formatProviderStage(stage?: string) {
+  const normalized = normalizeProviderStage(stage);
+  const labels: Record<string, string> = {
+    last32: "Zestiende finales",
+    last16: "Achtste finales",
+    quarterfinals: "Kwartfinales",
+    semifinal: "Halve finales",
+    semifinals: "Halve finales",
+    thirdplace: "Troostfinale",
+    thirdplaceplayoff: "Troostfinale",
+    final: "Finale",
+  };
+  return labels[normalized] ?? stage ?? "WK 2026";
 }
 
 function getProviderMatchKey(match: FootballDataMatch) {
@@ -532,7 +545,7 @@ function mergeFootballDataMatches(baseMatches: Match[], providerMatches: Footbal
     .map((providerMatch) => ({
       id: `fd-${providerMatch.providerMatchId}`,
       providerMatchId: providerMatch.providerMatchId,
-      stage: providerMatch.stage ?? "WK 2026",
+      stage: formatProviderStage(providerMatch.stage),
       kickoff: providerMatch.kickoff!,
       venueId: "api-venue",
       homeTeamId: createProviderTeamId(providerMatch.homeTeamName, `${providerMatch.providerMatchId}-home`),
