@@ -71,6 +71,8 @@ interface LeaderboardRow {
   order: number;
 }
 
+type DemoMode = "scores" | null;
+
 type SupabasePredictionRow = {
   id: string;
   match_id: string;
@@ -85,7 +87,7 @@ const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.3";
+const APP_VERSION = "2026.06.07.4";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -163,6 +165,17 @@ async function deleteSharedPredictionsForMatch(matchId: string) {
     headers: SUPABASE_HEADERS,
   });
   if (!response.ok) throw new Error("Could not delete predictions");
+}
+
+async function renameSharedPredictionsForClient(clientId: string, name: string) {
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?client_id=eq.${clientId}`, {
+    method: "PATCH",
+    headers: { ...SUPABASE_HEADERS, Prefer: "return=representation" },
+    body: JSON.stringify({ name }),
+  });
+  if (!response.ok) throw new Error("Could not rename predictions");
+  const rows = await response.json();
+  return rows.map(mapPredictionRow);
 }
 
 const teams: Team[] = [
@@ -312,6 +325,45 @@ const matches: Match[] = [
 
 const teamById = new Map(teams.map((team) => [team.id, team]));
 const venueById = new Map(venues.map((venue) => [venue.id, venue]));
+
+function getDemoMode(): DemoMode {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("demo") === "scores" ? "scores" : null;
+}
+
+function createDemoMatches(baseMatches: Match[]) {
+  const demoScores: Record<string, Pick<Match, "status" | "homeScore" | "awayScore" | "events">> = {
+    m1: {
+      status: "finished",
+      homeScore: 2,
+      awayScore: 1,
+      events: [
+        { id: "demo-m1-1", minute: 18, type: "goal", teamId: "mex", player: "Gimenez", description: "Doelpunt Mexico" },
+        { id: "demo-m1-2", minute: 51, type: "goal", teamId: "rsa", player: "Mokoena", description: "Doelpunt Zuid-Afrika" },
+        { id: "demo-m1-3", minute: 77, type: "goal", teamId: "mex", player: "Lozano", description: "Doelpunt Mexico" },
+      ],
+    },
+    m2: {
+      status: "finished",
+      homeScore: 0,
+      awayScore: 0,
+      events: [
+        { id: "demo-m2-1", minute: 62, type: "yellow-card", teamId: "cze", player: "Soucek", description: "Gele kaart" },
+      ],
+    },
+    m3: {
+      status: "live",
+      homeScore: 1,
+      awayScore: 0,
+      events: [
+        { id: "demo-m3-1", minute: 32, type: "goal", teamId: "can", player: "David", description: "Doelpunt Canada" },
+        { id: "demo-m3-2", minute: 58, type: "var", player: "VAR", description: "Doelpuntcontrole" },
+      ],
+    },
+  };
+
+  return baseMatches.map((match) => (demoScores[match.id] ? { ...match, ...demoScores[match.id] } : match));
+}
 
 function useLocalStorageState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
@@ -526,6 +578,8 @@ function isNewerVersion(remoteVersion: string, currentVersion: string) {
 }
 
 function App() {
+  const demoMode = getDemoMode();
+  const appMatches = useMemo(() => (demoMode === "scores" ? createDemoMatches(matches) : matches), [demoMode]);
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
@@ -539,22 +593,35 @@ function App() {
   const [serviceWorkerRegistration, setServiceWorkerRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
   const sortedMatches = useMemo(
-    () => [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
-    []
+    () => [...appMatches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
+    [appMatches]
   );
   const scheduleMatches = sortedMatches.filter((match) => !isBeforeToday(match.kickoff));
 
-  const selectedMatch = selectedMatchId ? matches.find((match) => match.id === selectedMatchId) ?? null : null;
+  const selectedMatch = selectedMatchId ? appMatches.find((match) => match.id === selectedMatchId) ?? null : null;
   const favoriteSet = new Set(favoriteIds);
   const filterBySearch = (match: Match) => matchSearchesCountry(match, searchQuery);
   const filteredScheduleMatches = scheduleMatches.filter(filterBySearch);
-  const filteredFavoriteMatches = sortedMatches.filter((match) => favoriteSet.has(match.id) && filterBySearch(match));
-  const filteredResultMatches = sortedMatches.filter(filterBySearch);
+  const filteredFavoriteMatches = sortedMatches.filter((match) => favoriteSet.has(match.id));
+  const filteredResultMatches = sortedMatches;
   const allPredictions = useMemo(() => Object.values(predictionsByMatch).flat(), [predictionsByMatch]);
-  const leaderboard = useMemo(() => buildLeaderboard(allPredictions, matches), [allPredictions]);
+  const leaderboard = useMemo(() => buildLeaderboard(allPredictions, appMatches), [allPredictions, appMatches]);
+  const ownPlayerKeys = useMemo(
+    () => new Set(getLatestPredictions(allPredictions).filter((prediction) => prediction.clientId === clientId).map((prediction) => normalizePlayerName(prediction.name))),
+    [allPredictions, clientId]
+  );
   const selectedPlayerPredictions = selectedPlayerName
-    ? getPredictionsForPlayer(selectedPlayerName, allPredictions, matches)
+    ? getPredictionsForPlayer(selectedPlayerName, allPredictions, appMatches)
     : [];
+
+  useEffect(() => {
+    if (!selectedMatch && !selectedPlayerName) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [selectedMatch, selectedPlayerName]);
 
   async function loadAllPredictions() {
     const sharedPredictions = await fetchAllSharedPredictions();
@@ -713,6 +780,23 @@ function App() {
     setPredictionsByMatch((current: Record<string, Prediction[]>) => ({ ...current, [matchId]: [] }));
   }
 
+  async function renameOwnPredictions(name: string) {
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new Error("Name is required");
+    await renameSharedPredictionsForClient(clientId, trimmedName);
+    setPredictionsByMatch((current: Record<string, Prediction[]>) =>
+      Object.fromEntries(
+        Object.entries(current).map(([matchId, predictionList]) => [
+          matchId,
+          predictionList.map((prediction) =>
+            prediction.clientId === clientId ? { ...prediction, name: trimmedName, updatedAt: new Date().toISOString() } : prediction
+          ),
+        ])
+      )
+    );
+    setSelectedPlayerName(trimmedName);
+  }
+
   function loginAdmin(code: string) {
     const isValid = code.trim() === ADMIN_CODE;
     if (isValid) setAdminUnlocked(true);
@@ -751,8 +835,9 @@ function App() {
   return (
     <main className="app-shell">
       <Header
-        liveCount={matches.filter((match) => match.status === "live").length}
+        liveCount={appMatches.filter((match) => match.status === "live").length}
         searchQuery={searchQuery}
+        showSearch={activeTab === "schedule"}
         onSearchChange={setSearchQuery}
         adminUnlocked={adminUnlocked}
         onAdminLogin={loginAdmin}
@@ -787,6 +872,7 @@ function App() {
         {activeTab === "leaderboard" && (
           <LeaderboardView
             leaderboard={leaderboard}
+            ownPlayerKeys={ownPlayerKeys}
             onSelectPlayer={setSelectedPlayerName}
           />
         )}
@@ -794,9 +880,23 @@ function App() {
 
       <BottomNav activeTab={activeTab} onChange={changeTab} />
 
+      {selectedPlayerName && (
+        <PlayerPredictionsDetail
+          playerName={selectedPlayerName}
+          items={selectedPlayerPredictions}
+          clientId={clientId}
+          isOwnPlayer={ownPlayerKeys.has(normalizePlayerName(selectedPlayerName))}
+          onClose={() => setSelectedPlayerName(null)}
+          onOpenMatch={setSelectedMatchId}
+          onSavePrediction={savePrediction}
+          onRenamePlayer={renameOwnPredictions}
+        />
+      )}
+
       {selectedMatch && (
         <MatchDetail
           match={selectedMatch}
+          allMatches={appMatches}
           isFavorite={favoriteSet.has(selectedMatch.id)}
           favoriteSet={favoriteSet}
           predictions={predictionsByMatch[selectedMatch.id] ?? []}
@@ -812,14 +912,6 @@ function App() {
         />
       )}
 
-      {selectedPlayerName && (
-        <PlayerPredictionsDetail
-          playerName={selectedPlayerName}
-          items={selectedPlayerPredictions}
-          onClose={() => setSelectedPlayerName(null)}
-        />
-      )}
-
       {updateAvailable && <UpdatePrompt isUpdating={isUpdating} onUpdate={updateNow} />}
     </main>
   );
@@ -828,6 +920,7 @@ function App() {
 function Header({
   liveCount,
   searchQuery,
+  showSearch,
   onSearchChange,
   adminUnlocked,
   onAdminLogin,
@@ -835,6 +928,7 @@ function Header({
 }: {
   liveCount: number;
   searchQuery: string;
+  showSearch: boolean;
   onSearchChange: (value: string) => void;
   adminUnlocked: boolean;
   onAdminLogin: (code: string) => boolean;
@@ -859,20 +953,22 @@ function Header({
     <header className="topbar">
       <div className="app-mark" aria-label="WK 2026">WK 2026</div>
       <div className="topbar-actions">
-        <div className="search-control">
-          <span aria-hidden="true">⌕</span>
-          <input
-            aria-label="Zoek op land"
-            value={searchQuery}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Zoek land"
-          />
-          {searchQuery && (
-            <button type="button" onClick={() => onSearchChange("")} aria-label="Zoekopdracht wissen">
-              ×
-            </button>
-          )}
-        </div>
+        {showSearch && (
+          <div className="search-control">
+            <span aria-hidden="true">⌕</span>
+            <input
+              aria-label="Zoek op land"
+              value={searchQuery}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Zoek land"
+            />
+            {searchQuery && (
+              <button type="button" onClick={() => onSearchChange("")} aria-label="Zoekopdracht wissen">
+                ×
+              </button>
+            )}
+          </div>
+        )}
         <div className="admin-menu">
           <button
             className={`admin-icon-button ${adminUnlocked ? "active" : ""}`}
@@ -977,9 +1073,11 @@ function ResultsView({ matches, ...rest }: MatchListProps) {
 
 function LeaderboardView({
   leaderboard,
+  ownPlayerKeys,
   onSelectPlayer,
 }: {
   leaderboard: LeaderboardRow[];
+  ownPlayerKeys: Set<string>;
   onSelectPlayer: (name: string) => void;
 }) {
   return (
@@ -987,17 +1085,21 @@ function LeaderboardView({
       <SectionTitle title="Scorebord" />
       {leaderboard.length ? (
         <div className="leaderboard-list">
-          {leaderboard.map((row) => (
-            <button className="leaderboard-row" type="button" key={row.key} onClick={() => onSelectPlayer(row.name)}>
-              <div>
-                <strong>{row.name}</strong>
-                <span>
-                  {row.predictionsCount} voorspeld · {row.exactCount} exact · {row.outcomeCount} uitkomst goed
-                </span>
-              </div>
-              <b>{row.points} punten</b>
-            </button>
-          ))}
+          {leaderboard.map((row, index) => {
+            const isOwn = ownPlayerKeys.has(row.key);
+            return (
+              <button className={`leaderboard-row ${isOwn ? "own" : ""}`} type="button" key={row.key} onClick={() => onSelectPlayer(row.name)}>
+                <span className="leaderboard-position">{index + 1}</span>
+                <div className="leaderboard-player">
+                  <strong>{row.name}{isOwn && <em>Jij</em>}</strong>
+                  <span>
+                    {row.predictionsCount} voorspeld · {row.exactCount} exact · {row.outcomeCount} uitkomst goed
+                  </span>
+                </div>
+                <b>{row.points} punten</b>
+              </button>
+            );
+          })}
         </div>
       ) : (
         <EmptyState
@@ -1143,6 +1245,7 @@ function StatusBadge({ status }: { status: MatchStatus }) {
 
 function MatchDetail({
   match,
+  allMatches,
   isFavorite,
   favoriteSet,
   predictions,
@@ -1157,6 +1260,7 @@ function MatchDetail({
   onAdminDeleteAll,
 }: {
   match: Match;
+  allMatches: Match[];
   isFavorite: boolean;
   favoriteSet: Set<string>;
   predictions: Prediction[];
@@ -1213,8 +1317,8 @@ function MatchDetail({
           onAdminDeleteAll={onAdminDeleteAll}
         />
 
-        <GroupStandings match={match} />
-        <GroupFixtures match={match} favoriteSet={favoriteSet} onToggleFavorite={onToggleMatchFavorite} />
+        <GroupStandings match={match} allMatches={allMatches} />
+        <GroupFixtures match={match} allMatches={allMatches} favoriteSet={favoriteSet} onToggleFavorite={onToggleMatchFavorite} />
       </section>
     </div>
   );
@@ -1392,8 +1496,8 @@ type StandingRow = {
   points: number;
 };
 
-function getGroupStandings(stage: string) {
-  const groupMatches = matches.filter((match) => match.stage === stage);
+function getGroupStandings(stage: string, allMatches: Match[]) {
+  const groupMatches = allMatches.filter((match) => match.stage === stage);
   const teamOrder: string[] = [];
 
   groupMatches.forEach((match) => {
@@ -1459,8 +1563,8 @@ function getGroupStandings(stage: string) {
   });
 }
 
-function GroupStandings({ match }: { match: Match }) {
-  const standings = getGroupStandings(match.stage);
+function GroupStandings({ match, allMatches }: { match: Match; allMatches: Match[] }) {
+  const standings = getGroupStandings(match.stage, allMatches);
 
   return (
     <section className="standings-panel">
@@ -1500,14 +1604,16 @@ function GroupStandings({ match }: { match: Match }) {
 
 function GroupFixtures({
   match,
+  allMatches,
   favoriteSet,
   onToggleFavorite,
 }: {
   match: Match;
+  allMatches: Match[];
   favoriteSet: Set<string>;
   onToggleFavorite: (matchId: string) => void;
 }) {
-  const groupMatches = matches
+  const groupMatches = allMatches
     .filter((groupMatch) => groupMatch.stage === match.stage)
     .sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime());
 
@@ -1554,44 +1660,184 @@ function predictionResultLabel(result: PredictionResult) {
 function PlayerPredictionsDetail({
   playerName,
   items,
+  clientId,
+  isOwnPlayer,
   onClose,
+  onOpenMatch,
+  onSavePrediction,
+  onRenamePlayer,
 }: {
   playerName: string;
   items: EvaluatedPrediction[];
+  clientId: string;
+  isOwnPlayer: boolean;
   onClose: () => void;
+  onOpenMatch: (matchId: string) => void;
+  onSavePrediction: (prediction: Prediction) => Promise<void> | void;
+  onRenamePlayer: (name: string) => Promise<void> | void;
 }) {
+  const [nameEditOpen, setNameEditOpen] = useState(false);
+  const [nameValue, setNameValue] = useState(playerName);
+  const [editingItem, setEditingItem] = useState<EvaluatedPrediction | null>(null);
+  const [message, setMessage] = useState("");
+  const totalPoints = items.reduce((total, item) => total + item.points, 0);
+
+  useEffect(() => {
+    setNameValue(playerName);
+  }, [playerName]);
+
+  async function saveName(event: React.FormEvent) {
+    event.preventDefault();
+    try {
+      await onRenamePlayer(nameValue);
+      setNameEditOpen(false);
+      setMessage("Naam aangepast.");
+    } catch {
+      setMessage("Naam aanpassen lukt nog niet.");
+    }
+  }
+
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
       <section className="detail-sheet player-sheet" onClick={(event) => event.stopPropagation()}>
         <div className="detail-header">
           <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>
-          <h2>{playerName}</h2>
-          <span className="player-total">{items.reduce((total, item) => total + item.points, 0)} pt</span>
+          <div className="player-title">
+            <h2>{playerName}</h2>
+            {isOwnPlayer && (
+              <button type="button" onClick={() => setNameEditOpen(true)} aria-label="Naam aanpassen">
+                ✎
+              </button>
+            )}
+          </div>
+          <span className="player-total">{totalPoints} pt</span>
         </div>
+        {message && <p className="feedback compact">{message}</p>}
         <div className="player-prediction-list">
           {items.map((item) => {
             const { home, away } = getMatchTeams(item.match);
             const hasActualScore = item.match.homeScore !== undefined && item.match.awayScore !== undefined;
+            const canEditScore = item.prediction.clientId === clientId && item.match.status === "scheduled";
             return (
               <article className="player-prediction-card" key={`${item.prediction.matchId}-${item.prediction.id ?? item.prediction.updatedAt}`}>
                 <div className="player-prediction-meta">
                   <span>{formatDate(item.match.kickoff)} · {formatTime(item.match.kickoff)}</span>
                   <b className={`prediction-result ${item.result}`}>{predictionResultLabel(item.result)}</b>
                 </div>
-                <strong>{home.name} - {away.name}</strong>
+                <button className="player-match-button" type="button" onClick={() => onOpenMatch(item.match.id)}>
+                  {home.name} - {away.name}
+                </button>
                 <div className="player-score-row">
                   <span>Voorspeld</span>
-                  <b>{item.prediction.homeScore} - {item.prediction.awayScore}</b>
+                  <div>
+                    <b>{item.prediction.homeScore} - {item.prediction.awayScore}</b>
+                    {canEditScore && (
+                      <button type="button" onClick={() => setEditingItem(item)} aria-label="Voorspelling aanpassen">
+                        ✎
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className="player-score-row">
-                  <span>Werkelijk</span>
-                  <b>{hasActualScore ? `${item.match.homeScore} - ${item.match.awayScore}` : "-"}</b>
+                  <span>Uitslag</span>
+                  <div>
+                    <b>{hasActualScore ? `${item.match.homeScore} - ${item.match.awayScore}` : "-"}</b>
+                    <small>{item.points} punten</small>
+                  </div>
                 </div>
               </article>
             );
           })}
         </div>
       </section>
+      {nameEditOpen && (
+        <div className="inline-modal-backdrop" role="dialog" aria-modal="true" onClick={(event) => {
+          event.stopPropagation();
+          setNameEditOpen(false);
+        }}>
+          <form className="inline-modal" onSubmit={saveName} onClick={(event) => event.stopPropagation()}>
+            <h3>Naam aanpassen</h3>
+            <label>
+              Naam
+              <input value={nameValue} onChange={(event) => setNameValue(event.target.value)} autoFocus />
+            </label>
+            <div className="inline-modal-actions">
+              <button type="button" onClick={() => setNameEditOpen(false)}>Annuleren</button>
+              <button type="submit">Opslaan</button>
+            </div>
+          </form>
+        </div>
+      )}
+      {editingItem && (
+        <QuickPredictionEditModal
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+          onSave={async (prediction) => {
+            await onSavePrediction(prediction);
+            setEditingItem(null);
+            setMessage("Voorspelling aangepast.");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function QuickPredictionEditModal({
+  item,
+  onClose,
+  onSave,
+}: {
+  item: EvaluatedPrediction;
+  onClose: () => void;
+  onSave: (prediction: Prediction) => Promise<void> | void;
+}) {
+  const { home, away } = getMatchTeams(item.match);
+  const [homeScore, setHomeScore] = useState(String(item.prediction.homeScore));
+  const [awayScore, setAwayScore] = useState(String(item.prediction.awayScore));
+  const [message, setMessage] = useState("");
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (homeScore === "" || awayScore === "") {
+      setMessage("Vul beide scores in.");
+      return;
+    }
+    try {
+      await onSave({
+        ...item.prediction,
+        homeScore: Number(homeScore),
+        awayScore: Number(awayScore),
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      setMessage("Opslaan lukt nog niet.");
+    }
+  }
+
+  return (
+    <div className="inline-modal-backdrop" role="dialog" aria-modal="true" onClick={(event) => {
+      event.stopPropagation();
+      onClose();
+    }}>
+      <form className="inline-modal" onSubmit={submit} onClick={(event) => event.stopPropagation()}>
+        <h3>Score aanpassen</h3>
+        <div className="score-inputs">
+          <label>
+            {home.shortName}
+            <input min="0" max="20" type="number" value={homeScore} onChange={(event) => setHomeScore(event.target.value)} autoFocus />
+          </label>
+          <label>
+            {away.shortName}
+            <input min="0" max="20" type="number" value={awayScore} onChange={(event) => setAwayScore(event.target.value)} />
+          </label>
+        </div>
+        {message && <p className="feedback compact">{message}</p>}
+        <div className="inline-modal-actions">
+          <button type="button" onClick={onClose}>Annuleren</button>
+          <button type="submit">Opslaan</button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1620,7 +1866,7 @@ function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab:
     { key: "schedule", label: "Speelschema", icon: "▦" },
     { key: "favorites", label: "Mijn wedstrijden", icon: "★" },
     { key: "results", label: "Uitslagen", icon: "✓" },
-    { key: "leaderboard", label: "Scorebord", icon: "≡" },
+    { key: "leaderboard", label: "Scorebord", icon: "🏅" },
   ];
 
   return (
