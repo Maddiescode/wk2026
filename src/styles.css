@@ -718,6 +718,65 @@ input:disabled {
   line-height: 1;
 }
 
+.admin-panel {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(23, 27, 33, 0.08);
+}
+
+.admin-login,
+.admin-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-login {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+}
+
+.admin-login label {
+  min-width: 0;
+}
+
+.admin-login input {
+  min-height: 38px;
+}
+
+.admin-login button,
+.admin-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(107, 114, 128, 0.34);
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+
+.admin-login button {
+  padding: 0 12px;
+}
+
+.admin-actions {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+}
+
+.admin-actions span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.admin-actions button {
+  padding: 0 10px;
+}
+
+.admin-actions button:disabled {
+  opacity: 0.48;
+}
+
 .standings-table {
   width: 100%;
   margin-top: 12px;

@@ -64,6 +64,7 @@ type SupabasePredictionRow = {
 const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
+const ADMIN_CODE = "wk2026";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -116,12 +117,21 @@ async function saveSharedPrediction(prediction: Prediction, clientId: string) {
   return mapPredictionRow(rows[0]);
 }
 
-async function deleteSharedPrediction(predictionId: string, clientId: string) {
-  const response = await fetch(`${PREDICTIONS_ENDPOINT}?id=eq.${predictionId}&client_id=eq.${clientId}`, {
+async function deleteSharedPrediction(predictionId: string, clientId: string, admin = false) {
+  const clientFilter = admin ? "" : `&client_id=eq.${clientId}`;
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?id=eq.${predictionId}${clientFilter}`, {
     method: "DELETE",
     headers: SUPABASE_HEADERS,
   });
   if (!response.ok) throw new Error("Could not delete prediction");
+}
+
+async function deleteSharedPredictionsForMatch(matchId: string) {
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?match_id=eq.${encodeURIComponent(matchId)}`, {
+    method: "DELETE",
+    headers: SUPABASE_HEADERS,
+  });
+  if (!response.ok) throw new Error("Could not delete predictions");
 }
 
 const teams: Team[] = [
@@ -366,6 +376,7 @@ function App() {
   const [favoriteIds, setFavoriteIds] = useLocalStorageState<string[]>("wk:favorites", []);
   const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
   const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
+  const [adminUnlocked, setAdminUnlocked] = useLocalStorageState<boolean>("wk:admin", false);
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
@@ -429,6 +440,25 @@ function App() {
     });
   }
 
+  async function deletePredictionAsAdmin(matchId: string, prediction: Prediction) {
+    if (prediction.id) await deleteSharedPrediction(prediction.id, clientId, true);
+    setPredictionsByMatch((current: Record<string, Prediction[]>) => {
+      const existing = current[matchId] ?? [];
+      return { ...current, [matchId]: existing.filter((item) => item.id !== prediction.id) };
+    });
+  }
+
+  async function deleteAllPredictionsAsAdmin(matchId: string) {
+    await deleteSharedPredictionsForMatch(matchId);
+    setPredictionsByMatch((current: Record<string, Prediction[]>) => ({ ...current, [matchId]: [] }));
+  }
+
+  function loginAdmin(code: string) {
+    const isValid = code.trim() === ADMIN_CODE;
+    if (isValid) setAdminUnlocked(true);
+    return isValid;
+  }
+
   return (
     <main className="app-shell">
       <Header
@@ -473,11 +503,16 @@ function App() {
           favoriteSet={favoriteSet}
           predictions={predictionsByMatch[selectedMatch.id] ?? []}
           clientId={clientId}
+          adminUnlocked={adminUnlocked}
           onClose={() => setSelectedMatchId(null)}
           onToggleFavorite={() => toggleFavorite(selectedMatch.id)}
           onToggleMatchFavorite={toggleFavorite}
           onSavePrediction={savePrediction}
           onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
+          onAdminLogin={loginAdmin}
+          onAdminLogout={() => setAdminUnlocked(false)}
+          onAdminDeletePrediction={(prediction) => deletePredictionAsAdmin(selectedMatch.id, prediction)}
+          onAdminDeleteAll={() => deleteAllPredictionsAsAdmin(selectedMatch.id)}
         />
       )}
     </main>
@@ -695,22 +730,32 @@ function MatchDetail({
   favoriteSet,
   predictions,
   clientId,
+  adminUnlocked,
   onClose,
   onToggleFavorite,
   onToggleMatchFavorite,
   onSavePrediction,
   onDeletePrediction,
+  onAdminLogin,
+  onAdminLogout,
+  onAdminDeletePrediction,
+  onAdminDeleteAll,
 }: {
   match: Match;
   isFavorite: boolean;
   favoriteSet: Set<string>;
   predictions: Prediction[];
   clientId: string;
+  adminUnlocked: boolean;
   onClose: () => void;
   onToggleFavorite: () => void;
   onToggleMatchFavorite: (matchId: string) => void;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
+  onAdminLogin: (code: string) => boolean;
+  onAdminLogout: () => void;
+  onAdminDeletePrediction: (prediction: Prediction) => Promise<void> | void;
+  onAdminDeleteAll: () => Promise<void> | void;
 }) {
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
@@ -747,9 +792,14 @@ function MatchDetail({
           match={match}
           predictions={predictions}
           clientId={clientId}
+          adminUnlocked={adminUnlocked}
           disabled={predictionClosed}
           onSavePrediction={onSavePrediction}
           onDeletePrediction={onDeletePrediction}
+          onAdminLogin={onAdminLogin}
+          onAdminLogout={onAdminLogout}
+          onAdminDeletePrediction={onAdminDeletePrediction}
+          onAdminDeleteAll={onAdminDeleteAll}
         />
 
         <GroupStandings match={match} />
@@ -775,16 +825,26 @@ function PredictionForm({
   match,
   predictions,
   clientId,
+  adminUnlocked,
   disabled,
   onSavePrediction,
   onDeletePrediction,
+  onAdminLogin,
+  onAdminLogout,
+  onAdminDeletePrediction,
+  onAdminDeleteAll,
 }: {
   match: Match;
   predictions: Prediction[];
   clientId: string;
+  adminUnlocked: boolean;
   disabled: boolean;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
+  onAdminLogin: (code: string) => boolean;
+  onAdminLogout: () => void;
+  onAdminDeletePrediction: (prediction: Prediction) => Promise<void> | void;
+  onAdminDeleteAll: () => Promise<void> | void;
 }) {
   const { home, away } = getMatchTeams(match);
   const ownPrediction = predictions.find((prediction) => prediction.clientId === clientId);
@@ -792,6 +852,7 @@ function PredictionForm({
   const [name, setName] = useState(ownPrediction?.name ?? "");
   const [homeScore, setHomeScore] = useState(String(ownPrediction?.homeScore ?? ""));
   const [awayScore, setAwayScore] = useState(String(ownPrediction?.awayScore ?? ""));
+  const [adminCode, setAdminCode] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -835,6 +896,34 @@ function PredictionForm({
     }
   }
 
+  async function deletePredictionForAdmin(prediction: Prediction) {
+    try {
+      await onAdminDeletePrediction(prediction);
+      setMessage("Voorspelling verwijderd.");
+    } catch {
+      setMessage("Admin verwijderen lukt nog niet. Controleer de Supabase rechten.");
+    }
+  }
+
+  async function deleteAllForAdmin() {
+    try {
+      await onAdminDeleteAll();
+      setMessage("Alle voorspellingen voor deze wedstrijd zijn verwijderd.");
+    } catch {
+      setMessage("Alles verwijderen lukt nog niet. Controleer de Supabase rechten.");
+    }
+  }
+
+  function submitAdminLogin(event: React.FormEvent) {
+    event.preventDefault();
+    if (onAdminLogin(adminCode)) {
+      setAdminCode("");
+      setMessage("Adminmodus actief.");
+      return;
+    }
+    setMessage("Admincode klopt niet.");
+  }
+
   function matchesCurrentScore(prediction: Prediction) {
     return hasCurrentScore && prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore;
   }
@@ -852,8 +941,11 @@ function PredictionForm({
               <span>{matchesCurrentScore(prediction) && <span className="prediction-trophy">🏆</span>}{prediction.name}</span>
               <div className="saved-prediction-score">
                 <strong>{prediction.homeScore} - {prediction.awayScore}</strong>
-                {prediction.clientId === clientId && (
+                {prediction.clientId === clientId && !adminUnlocked && (
                   <button type="button" onClick={deleteSavedPrediction} aria-label="Verwijder voorspelling">×</button>
+                )}
+                {adminUnlocked && (
+                  <button type="button" onClick={() => deletePredictionForAdmin(prediction)} aria-label="Verwijder voorspelling als admin">×</button>
                 )}
               </div>
             </div>
@@ -879,6 +971,28 @@ function PredictionForm({
         </div>
         <button className="primary-button" type="submit" disabled={disabled}>{ownPrediction ? "Aanpassen" : "Opslaan"}</button>
       </form>
+      <section className="admin-panel">
+        {adminUnlocked ? (
+          <div className="admin-actions">
+            <span>Adminmodus actief</span>
+            <button type="button" onClick={deleteAllForAdmin} disabled={!predictions.length}>Alles verwijderen</button>
+            <button type="button" onClick={onAdminLogout}>Uitloggen</button>
+          </div>
+        ) : (
+          <form className="admin-login" onSubmit={submitAdminLogin}>
+            <label>
+              Admin
+              <input
+                value={adminCode}
+                onChange={(event) => setAdminCode(event.target.value)}
+                placeholder="Admincode"
+                type="password"
+              />
+            </label>
+            <button type="submit">Inloggen</button>
+          </form>
+        )}
+      </section>
       {message && <p className="feedback">{message}</p>}
     </section>
   );
