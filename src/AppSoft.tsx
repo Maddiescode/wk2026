@@ -2,7 +2,9 @@ const { useEffect, useMemo, useState } = React;
 
 type MatchStatus = "scheduled" | "live" | "finished";
 type EventType = "goal" | "yellow-card" | "red-card" | "substitution" | "var";
-type TabKey = "schedule" | "favorites" | "results";
+type TabKey = "schedule" | "favorites" | "results" | "leaderboard";
+type MatchOutcome = "home" | "away" | "draw";
+type PredictionResult = "pending" | "exact" | "winner" | "draw" | "wrong";
 
 interface Team {
   id: string;
@@ -47,8 +49,26 @@ interface Prediction {
   name: string;
   homeScore: number;
   awayScore: number;
+  createdAt?: string;
   updatedAt: string;
   clientId?: string;
+}
+
+interface EvaluatedPrediction {
+  prediction: Prediction;
+  match: Match;
+  result: PredictionResult;
+  points: number;
+}
+
+interface LeaderboardRow {
+  key: string;
+  name: string;
+  predictionsCount: number;
+  exactCount: number;
+  outcomeCount: number;
+  points: number;
+  order: number;
 }
 
 type SupabasePredictionRow = {
@@ -65,7 +85,7 @@ const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.2";
+const APP_VERSION = "2026.06.07.3";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -84,6 +104,7 @@ function mapPredictionRow(row: SupabasePredictionRow): Prediction {
     name: row.name,
     homeScore: row.home_score,
     awayScore: row.away_score,
+    createdAt: row.created_at,
     updatedAt: row.created_at,
     clientId: row.client_id,
   };
@@ -94,6 +115,15 @@ async function fetchSharedPredictions(matchId: string) {
     headers: SUPABASE_HEADERS,
   });
   if (!response.ok) throw new Error("Could not load predictions");
+  const rows = await response.json();
+  return rows.map(mapPredictionRow);
+}
+
+async function fetchAllSharedPredictions() {
+  const response = await fetch(`${PREDICTIONS_ENDPOINT}?select=*&order=created_at.desc`, {
+    headers: SUPABASE_HEADERS,
+  });
+  if (!response.ok) throw new Error("Could not load all predictions");
   const rows = await response.json();
   return rows.map(mapPredictionRow);
 }
@@ -353,6 +383,116 @@ function matchSearchesCountry(match: Match, query: string) {
   );
 }
 
+function normalizePlayerName(name: string) {
+  return name.trim().toLowerCase();
+}
+
+function isValidPrediction(prediction: Prediction) {
+  return (
+    Boolean(prediction.matchId) &&
+    Boolean(prediction.name.trim()) &&
+    Number.isFinite(prediction.homeScore) &&
+    Number.isFinite(prediction.awayScore) &&
+    prediction.homeScore >= 0 &&
+    prediction.awayScore >= 0
+  );
+}
+
+function getPredictionTime(prediction: Prediction) {
+  return new Date(prediction.updatedAt || prediction.createdAt || "").getTime() || 0;
+}
+
+function getLatestPredictions(predictions: Prediction[]) {
+  const latest = new Map<string, Prediction>();
+
+  predictions.filter(isValidPrediction).forEach((prediction) => {
+    const key = `${normalizePlayerName(prediction.name)}:${prediction.matchId}`;
+    const existing = latest.get(key);
+    if (!existing || getPredictionTime(prediction) >= getPredictionTime(existing)) {
+      latest.set(key, prediction);
+    }
+  });
+
+  return [...latest.values()];
+}
+
+function getMatchOutcome(homeScore: number, awayScore: number): MatchOutcome {
+  if (homeScore > awayScore) return "home";
+  if (awayScore > homeScore) return "away";
+  return "draw";
+}
+
+function evaluatePrediction(prediction: Prediction, match: Match): { result: PredictionResult; points: number } {
+  if (match.status !== "finished" || match.homeScore === undefined || match.awayScore === undefined) {
+    return { result: "pending", points: 0 };
+  }
+
+  if (prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore) {
+    return { result: "exact", points: 3 };
+  }
+
+  const predictedOutcome = getMatchOutcome(prediction.homeScore, prediction.awayScore);
+  const actualOutcome = getMatchOutcome(match.homeScore, match.awayScore);
+  if (predictedOutcome !== actualOutcome) return { result: "wrong", points: 0 };
+
+  return { result: actualOutcome === "draw" ? "draw" : "winner", points: 1 };
+}
+
+function buildLeaderboard(predictions: Prediction[], allMatches: Match[]) {
+  const matchById = new Map(allMatches.map((match) => [match.id, match]));
+  const rows = new Map<string, LeaderboardRow>();
+
+  getLatestPredictions(predictions).forEach((prediction) => {
+    const match = matchById.get(prediction.matchId);
+    if (!match) return;
+
+    const key = normalizePlayerName(prediction.name);
+    const existing = rows.get(key);
+    const evaluation = evaluatePrediction(prediction, match);
+    const row =
+      existing ??
+      {
+        key,
+        name: prediction.name.trim(),
+        predictionsCount: 0,
+        exactCount: 0,
+        outcomeCount: 0,
+        points: 0,
+        order: rows.size,
+      };
+
+    row.predictionsCount += 1;
+    if (evaluation.result === "exact") row.exactCount += 1;
+    if (evaluation.result === "winner" || evaluation.result === "draw") row.outcomeCount += 1;
+    row.points += evaluation.points;
+    rows.set(key, row);
+  });
+
+  return [...rows.values()].sort((a, b) => (
+    b.points - a.points ||
+    b.exactCount - a.exactCount ||
+    b.outcomeCount - a.outcomeCount ||
+    b.predictionsCount - a.predictionsCount ||
+    a.order - b.order
+  ));
+}
+
+function getPredictionsForPlayer(name: string, predictions: Prediction[], allMatches: Match[]): EvaluatedPrediction[] {
+  const playerKey = normalizePlayerName(name);
+  const matchById = new Map(allMatches.map((match) => [match.id, match]));
+
+  return getLatestPredictions(predictions)
+    .filter((prediction) => normalizePlayerName(prediction.name) === playerKey)
+    .map((prediction) => {
+      const match = matchById.get(prediction.matchId);
+      if (!match) return null;
+      const evaluation = evaluatePrediction(prediction, match);
+      return { prediction, match, ...evaluation };
+    })
+    .filter(Boolean)
+    .sort((a, b) => new Date(a!.match.kickoff).getTime() - new Date(b!.match.kickoff).getTime()) as EvaluatedPrediction[];
+}
+
 function statusLabel(status: MatchStatus) {
   if (status === "scheduled") return "Gepland";
   if (status === "live") return "LIVE";
@@ -388,6 +528,7 @@ function isNewerVersion(remoteVersion: string, currentVersion: string) {
 function App() {
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useLocalStorageState<string[]>("wk:favorites", []);
   const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
@@ -409,6 +550,47 @@ function App() {
   const filteredScheduleMatches = scheduleMatches.filter(filterBySearch);
   const filteredFavoriteMatches = sortedMatches.filter((match) => favoriteSet.has(match.id) && filterBySearch(match));
   const filteredResultMatches = sortedMatches.filter(filterBySearch);
+  const allPredictions = useMemo(() => Object.values(predictionsByMatch).flat(), [predictionsByMatch]);
+  const leaderboard = useMemo(() => buildLeaderboard(allPredictions, matches), [allPredictions]);
+  const selectedPlayerPredictions = selectedPlayerName
+    ? getPredictionsForPlayer(selectedPlayerName, allPredictions, matches)
+    : [];
+
+  async function loadAllPredictions() {
+    const sharedPredictions = await fetchAllSharedPredictions();
+    const grouped = sharedPredictions.reduce<Record<string, Prediction[]>>((groups, prediction) => {
+      groups[prediction.matchId] = [...(groups[prediction.matchId] ?? []), prediction];
+      return groups;
+    }, {});
+    setPredictionsByMatch(grouped);
+  }
+
+  useEffect(() => {
+    let isActive = true;
+
+    fetchAllSharedPredictions()
+      .then((sharedPredictions) => {
+        if (!isActive) return;
+        const grouped = sharedPredictions.reduce<Record<string, Prediction[]>>((groups, prediction) => {
+          groups[prediction.matchId] = [...(groups[prediction.matchId] ?? []), prediction];
+          return groups;
+        }, {});
+        setPredictionsByMatch(grouped);
+      })
+      .catch(() => {
+        // LocalStorage remains available when the shared backend cannot be reached.
+      });
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") loadAllPredictions().catch(() => undefined);
+    }
+
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      isActive = false;
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedMatchId) return;
@@ -602,6 +784,12 @@ function App() {
             onSelectMatch={setSelectedMatchId}
           />
         )}
+        {activeTab === "leaderboard" && (
+          <LeaderboardView
+            leaderboard={leaderboard}
+            onSelectPlayer={setSelectedPlayerName}
+          />
+        )}
       </section>
 
       <BottomNav activeTab={activeTab} onChange={changeTab} />
@@ -621,6 +809,14 @@ function App() {
           onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
           onAdminDeletePrediction={(prediction) => deletePredictionAsAdmin(selectedMatch.id, prediction)}
           onAdminDeleteAll={() => deleteAllPredictionsAsAdmin(selectedMatch.id)}
+        />
+      )}
+
+      {selectedPlayerName && (
+        <PlayerPredictionsDetail
+          playerName={selectedPlayerName}
+          items={selectedPlayerPredictions}
+          onClose={() => setSelectedPlayerName(null)}
         />
       )}
 
@@ -773,6 +969,40 @@ function ResultsView({ matches, ...rest }: MatchListProps) {
         <EmptyState
           title="Nog geen uitslagen"
           text="Het WK 2026 begint op 11 juni. Zodra wedstrijden live zijn of afgelopen, verschijnen ze hier."
+        />
+      )}
+    </>
+  );
+}
+
+function LeaderboardView({
+  leaderboard,
+  onSelectPlayer,
+}: {
+  leaderboard: LeaderboardRow[];
+  onSelectPlayer: (name: string) => void;
+}) {
+  return (
+    <>
+      <SectionTitle title="Scorebord" />
+      {leaderboard.length ? (
+        <div className="leaderboard-list">
+          {leaderboard.map((row) => (
+            <button className="leaderboard-row" type="button" key={row.key} onClick={() => onSelectPlayer(row.name)}>
+              <div>
+                <strong>{row.name}</strong>
+                <span>
+                  {row.predictionsCount} voorspeld · {row.exactCount} exact · {row.outcomeCount} uitkomst goed
+                </span>
+              </div>
+              <b>{row.points} punten</b>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          title="Nog geen scorebord"
+          text="Zodra er voorspellingen zijn ingevuld, verschijnen de deelnemers hier."
         />
       )}
     </>
@@ -1313,6 +1543,59 @@ function GroupFixtures({
   );
 }
 
+function predictionResultLabel(result: PredictionResult) {
+  if (result === "pending") return "Nog niet gespeeld";
+  if (result === "exact") return "Exact goed";
+  if (result === "winner") return "Winnaar goed";
+  if (result === "draw") return "Gelijkspel goed";
+  return "Fout";
+}
+
+function PlayerPredictionsDetail({
+  playerName,
+  items,
+  onClose,
+}: {
+  playerName: string;
+  items: EvaluatedPrediction[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
+      <section className="detail-sheet player-sheet" onClick={(event) => event.stopPropagation()}>
+        <div className="detail-header">
+          <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>
+          <h2>{playerName}</h2>
+          <span className="player-total">{items.reduce((total, item) => total + item.points, 0)} pt</span>
+        </div>
+        <div className="player-prediction-list">
+          {items.map((item) => {
+            const { home, away } = getMatchTeams(item.match);
+            const hasActualScore = item.match.homeScore !== undefined && item.match.awayScore !== undefined;
+            return (
+              <article className="player-prediction-card" key={`${item.prediction.matchId}-${item.prediction.id ?? item.prediction.updatedAt}`}>
+                <div className="player-prediction-meta">
+                  <span>{formatDate(item.match.kickoff)} · {formatTime(item.match.kickoff)}</span>
+                  <b className={`prediction-result ${item.result}`}>{predictionResultLabel(item.result)}</b>
+                </div>
+                <strong>{home.name} - {away.name}</strong>
+                <div className="player-score-row">
+                  <span>Voorspeld</span>
+                  <b>{item.prediction.homeScore} - {item.prediction.awayScore}</b>
+                </div>
+                <div className="player-score-row">
+                  <span>Werkelijk</span>
+                  <b>{hasActualScore ? `${item.match.homeScore} - ${item.match.awayScore}` : "-"}</b>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function SectionTitle({ title }: { title: string }) {
   return (
     <div className="section-title">
@@ -1337,6 +1620,7 @@ function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab:
     { key: "schedule", label: "Speelschema", icon: "▦" },
     { key: "favorites", label: "Mijn wedstrijden", icon: "★" },
     { key: "results", label: "Uitslagen", icon: "✓" },
+    { key: "leaderboard", label: "Scorebord", icon: "≡" },
   ];
 
   return (
