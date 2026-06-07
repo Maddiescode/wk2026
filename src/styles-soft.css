@@ -129,6 +129,32 @@ button {
   border-color: rgba(22, 163, 74, 0.22);
 }
 
+.update-icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(249, 115, 22, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 237, 213, 0.78);
+  color: #ff5a00;
+  font-size: 1.12rem;
+  font-weight: 650;
+}
+
+.update-icon-button::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #ff5a00;
+}
+
 .admin-dot {
   position: absolute;
   top: 5px;

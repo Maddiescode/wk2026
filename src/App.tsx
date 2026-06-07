@@ -65,6 +65,7 @@ const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const ADMIN_CODE = "wk2022";
+const APP_VERSION = "2026-06-07-update-check";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -377,6 +378,7 @@ function App() {
   const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
   const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
   const [adminUnlocked, setAdminUnlocked] = useLocalStorageState<boolean>("wk:admin", false);
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   const sortedMatches = useMemo(
     () => [...matches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
@@ -415,6 +417,35 @@ function App() {
       isActive = false;
     };
   }, [selectedMatchId]);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function checkForUpdate() {
+      try {
+        const response = await fetch(`./version.json?check=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (isActive && data.version && data.version !== APP_VERSION) setUpdateAvailable(true);
+      } catch {
+        // Update checks should never interrupt app usage.
+      }
+    }
+
+    function checkWhenVisible() {
+      if (document.visibilityState === "visible") checkForUpdate();
+    }
+
+    checkForUpdate();
+    const intervalId = window.setInterval(checkForUpdate, 60000);
+    document.addEventListener("visibilitychange", checkWhenVisible);
+
+    return () => {
+      isActive = false;
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", checkWhenVisible);
+    };
+  }, []);
 
   function toggleFavorite(matchId: string) {
     setFavoriteIds((current: string[]) =>
@@ -468,6 +499,12 @@ function App() {
     }
   }
 
+  function refreshApp() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("updated", Date.now().toString());
+    window.location.replace(url.toString());
+  }
+
   return (
     <main className="app-shell">
       <Header
@@ -475,8 +512,10 @@ function App() {
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         adminUnlocked={adminUnlocked}
+        updateAvailable={updateAvailable}
         onAdminLogin={loginAdmin}
         onAdminLogout={() => setAdminUnlocked(false)}
+        onRefreshApp={refreshApp}
       />
 
       <section className="content">
@@ -534,15 +573,19 @@ function Header({
   searchQuery,
   onSearchChange,
   adminUnlocked,
+  updateAvailable,
   onAdminLogin,
   onAdminLogout,
+  onRefreshApp,
 }: {
   liveCount: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   adminUnlocked: boolean;
+  updateAvailable: boolean;
   onAdminLogin: (code: string) => boolean;
   onAdminLogout: () => void;
+  onRefreshApp: () => void;
 }) {
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminCode, setAdminCode] = useState("");
@@ -612,6 +655,11 @@ function Header({
             </div>
           )}
         </div>
+        {updateAvailable && (
+          <button className="update-icon-button" type="button" onClick={onRefreshApp} aria-label="Update laden">
+            ↻
+          </button>
+        )}
         {liveCount > 0 && <span className="pill live-dot">{liveCount} live</span>}
       </div>
     </header>
