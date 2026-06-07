@@ -140,7 +140,7 @@ const teams: Team[] = [
   { id: "cze", name: "Tsjechië", shortName: "CZE", flag: "🇨🇿", primaryColor: "#2563eb" },
   { id: "ecu", name: "Ecuador", shortName: "ECU", flag: "🇪🇨", primaryColor: "#eab308" },
   { id: "egy", name: "Egypte", shortName: "EGY", flag: "🇪🇬", primaryColor: "#dc2626" },
-  { id: "eng", name: "Engeland", shortName: "ENG", flag: "", flagClass: "england", primaryColor: "#e5e7eb" },
+  { id: "eng", name: "Engeland", shortName: "ENG", flag: "ENG", flagClass: "code", primaryColor: "#e5e7eb" },
   { id: "ned", name: "Nederland", shortName: "NED", flag: "🇳🇱", primaryColor: "#f97316" },
   { id: "bra", name: "Brazilië", shortName: "BRA", flag: "🇧🇷", primaryColor: "#16a34a" },
   { id: "arg", name: "Argentinië", shortName: "ARG", flag: "🇦🇷", primaryColor: "#38bdf8" },
@@ -162,7 +162,7 @@ const teams: Team[] = [
   { id: "por", name: "Portugal", shortName: "POR", flag: "🇵🇹", primaryColor: "#dc2626" },
   { id: "qat", name: "Qatar", shortName: "QAT", flag: "🇶🇦", primaryColor: "#7f1d1d" },
   { id: "ksa", name: "Saudi-Arabië", shortName: "KSA", flag: "🇸🇦", primaryColor: "#15803d" },
-  { id: "sco", name: "Schotland", shortName: "SCO", flag: "", flagClass: "scotland", primaryColor: "#1d4ed8" },
+  { id: "sco", name: "Schotland", shortName: "SCO", flag: "SCO", flagClass: "code", primaryColor: "#1d4ed8" },
   { id: "sen", name: "Senegal", shortName: "SEN", flag: "🇸🇳", primaryColor: "#16a34a" },
   { id: "rsa", name: "Zuid-Afrika", shortName: "RSA", flag: "🇿🇦", primaryColor: "#16a34a" },
   { id: "esp", name: "Spanje", shortName: "ESP", flag: "🇪🇸", primaryColor: "#eab308" },
@@ -611,9 +611,10 @@ function MatchCard({
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
   const isDutchMatch = home.id === "ned" || away.id === "ned";
+  const cardTone = isFavorite ? (isDutchMatch ? "dutch-favorite" : "favorite-match") : "";
 
   return (
-    <article className={`match-card ${match.status} ${isDutchMatch ? "dutch-match" : ""}`} onClick={() => onSelectMatch(match.id)}>
+    <article className={`match-card ${match.status} ${cardTone}`} onClick={() => onSelectMatch(match.id)}>
       <div className="match-meta">
         <span>{formatTime(match.kickoff)}</span>
         <small>{match.stage}</small>
