@@ -685,7 +685,6 @@ function FavoritesView(props: MatchListProps) {
         <EmptyState
           title="Nog geen favorieten"
           text="Tik op de ster bij een wedstrijd om hem hier te bewaren."
-          action="Ga naar Speelschema"
         />
       )}
     </>
