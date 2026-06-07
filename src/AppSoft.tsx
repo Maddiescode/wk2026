@@ -64,7 +64,7 @@ type SupabasePredictionRow = {
 const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
-const ADMIN_CODE = "wk2026";
+const ADMIN_CODE = "wk2022";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -465,6 +465,9 @@ function App() {
         liveCount={matches.filter((match) => match.status === "live").length}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
+        adminUnlocked={adminUnlocked}
+        onAdminLogin={loginAdmin}
+        onAdminLogout={() => setAdminUnlocked(false)}
       />
 
       <section className="content">
@@ -509,8 +512,6 @@ function App() {
           onToggleMatchFavorite={toggleFavorite}
           onSavePrediction={savePrediction}
           onDeletePrediction={(prediction) => deletePrediction(selectedMatch.id, prediction)}
-          onAdminLogin={loginAdmin}
-          onAdminLogout={() => setAdminUnlocked(false)}
           onAdminDeletePrediction={(prediction) => deletePredictionAsAdmin(selectedMatch.id, prediction)}
           onAdminDeleteAll={() => deleteAllPredictionsAsAdmin(selectedMatch.id)}
         />
@@ -523,11 +524,32 @@ function Header({
   liveCount,
   searchQuery,
   onSearchChange,
+  adminUnlocked,
+  onAdminLogin,
+  onAdminLogout,
 }: {
   liveCount: number;
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  adminUnlocked: boolean;
+  onAdminLogin: (code: string) => boolean;
+  onAdminLogout: () => void;
 }) {
+  const [adminOpen, setAdminOpen] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
+  const [adminMessage, setAdminMessage] = useState("");
+
+  function submitAdminLogin(event: React.FormEvent) {
+    event.preventDefault();
+    if (onAdminLogin(adminCode)) {
+      setAdminCode("");
+      setAdminMessage("");
+      setAdminOpen(false);
+      return;
+    }
+    setAdminMessage("Code klopt niet.");
+  }
+
   return (
     <header className="topbar">
       <div className="app-mark" aria-label="WK 2026">WK 2026</div>
@@ -540,6 +562,41 @@ function Header({
             placeholder="Zoek land"
           />
         </label>
+        <div className="admin-menu">
+          <button
+            className={`admin-icon-button ${adminUnlocked ? "active" : ""}`}
+            type="button"
+            onClick={() => setAdminOpen((current) => !current)}
+            aria-label="Admin"
+          >
+            ⚙
+            {adminUnlocked && <span className="admin-dot" />}
+          </button>
+          {adminOpen && (
+            <div className="admin-popover">
+              {adminUnlocked ? (
+                <div className="admin-popover-actions">
+                  <span>Adminmodus actief</span>
+                  <button type="button" onClick={onAdminLogout}>Uitloggen</button>
+                </div>
+              ) : (
+                <form className="admin-login" onSubmit={submitAdminLogin}>
+                  <label>
+                    Wachtwoord
+                    <input
+                      value={adminCode}
+                      onChange={(event) => setAdminCode(event.target.value)}
+                      placeholder="Wachtwoord"
+                      type="password"
+                    />
+                  </label>
+                  <button type="submit">Inloggen</button>
+                  {adminMessage && <p>{adminMessage}</p>}
+                </form>
+              )}
+            </div>
+          )}
+        </div>
         {liveCount > 0 && <span className="pill live-dot">{liveCount} live</span>}
       </div>
     </header>
@@ -736,8 +793,6 @@ function MatchDetail({
   onToggleMatchFavorite,
   onSavePrediction,
   onDeletePrediction,
-  onAdminLogin,
-  onAdminLogout,
   onAdminDeletePrediction,
   onAdminDeleteAll,
 }: {
@@ -752,8 +807,6 @@ function MatchDetail({
   onToggleMatchFavorite: (matchId: string) => void;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
-  onAdminLogin: (code: string) => boolean;
-  onAdminLogout: () => void;
   onAdminDeletePrediction: (prediction: Prediction) => Promise<void> | void;
   onAdminDeleteAll: () => Promise<void> | void;
 }) {
@@ -796,8 +849,6 @@ function MatchDetail({
           disabled={predictionClosed}
           onSavePrediction={onSavePrediction}
           onDeletePrediction={onDeletePrediction}
-          onAdminLogin={onAdminLogin}
-          onAdminLogout={onAdminLogout}
           onAdminDeletePrediction={onAdminDeletePrediction}
           onAdminDeleteAll={onAdminDeleteAll}
         />
@@ -829,8 +880,6 @@ function PredictionForm({
   disabled,
   onSavePrediction,
   onDeletePrediction,
-  onAdminLogin,
-  onAdminLogout,
   onAdminDeletePrediction,
   onAdminDeleteAll,
 }: {
@@ -841,8 +890,6 @@ function PredictionForm({
   disabled: boolean;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
   onDeletePrediction: (prediction?: Prediction) => Promise<void> | void;
-  onAdminLogin: (code: string) => boolean;
-  onAdminLogout: () => void;
   onAdminDeletePrediction: (prediction: Prediction) => Promise<void> | void;
   onAdminDeleteAll: () => Promise<void> | void;
 }) {
@@ -852,7 +899,6 @@ function PredictionForm({
   const [name, setName] = useState(ownPrediction?.name ?? "");
   const [homeScore, setHomeScore] = useState(String(ownPrediction?.homeScore ?? ""));
   const [awayScore, setAwayScore] = useState(String(ownPrediction?.awayScore ?? ""));
-  const [adminCode, setAdminCode] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -914,16 +960,6 @@ function PredictionForm({
     }
   }
 
-  function submitAdminLogin(event: React.FormEvent) {
-    event.preventDefault();
-    if (onAdminLogin(adminCode)) {
-      setAdminCode("");
-      setMessage("Adminmodus actief.");
-      return;
-    }
-    setMessage("Admincode klopt niet.");
-  }
-
   function matchesCurrentScore(prediction: Prediction) {
     return hasCurrentScore && prediction.homeScore === match.homeScore && prediction.awayScore === match.awayScore;
   }
@@ -971,28 +1007,14 @@ function PredictionForm({
         </div>
         <button className="primary-button" type="submit" disabled={disabled}>{ownPrediction ? "Aanpassen" : "Opslaan"}</button>
       </form>
-      <section className="admin-panel">
-        {adminUnlocked ? (
+      {adminUnlocked && (
+        <section className="admin-panel">
           <div className="admin-actions">
             <span>Adminmodus actief</span>
             <button type="button" onClick={deleteAllForAdmin} disabled={!predictions.length}>Alles verwijderen</button>
-            <button type="button" onClick={onAdminLogout}>Uitloggen</button>
           </div>
-        ) : (
-          <form className="admin-login" onSubmit={submitAdminLogin}>
-            <label>
-              Admin
-              <input
-                value={adminCode}
-                onChange={(event) => setAdminCode(event.target.value)}
-                placeholder="Admincode"
-                type="password"
-              />
-            </label>
-            <button type="submit">Inloggen</button>
-          </form>
-        )}
-      </section>
+        </section>
+      )}
       {message && <p className="feedback">{message}</p>}
     </section>
   );

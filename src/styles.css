@@ -89,6 +89,82 @@ button {
   font-weight: 450;
 }
 
+.admin-menu {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.admin-icon-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(23, 27, 33, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.admin-icon-button.active {
+  border-color: rgba(22, 163, 74, 0.22);
+}
+
+.admin-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.admin-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  width: min(78vw, 240px);
+  padding: 12px;
+  border: 1px solid rgba(23, 27, 33, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.16);
+  backdrop-filter: blur(18px);
+}
+
+.admin-popover p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--red);
+  font-size: 0.78rem;
+}
+
+.admin-popover-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-popover-actions span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.admin-popover-actions button {
+  min-height: 38px;
+  border: 1px solid rgba(107, 114, 128, 0.34);
+  border-radius: 8px;
+  background: transparent;
+  color: #6b7280;
+  font-size: 0.82rem;
+  font-weight: 550;
+}
+
 .section-title h2,
 .prediction-panel h2,
 .event-log h2 {
@@ -759,7 +835,7 @@ input:disabled {
 }
 
 .admin-actions {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
 }
 
