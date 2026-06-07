@@ -459,6 +459,15 @@ function App() {
     return isValid;
   }
 
+  function changeTab(tab: TabKey) {
+    setActiveTab(tab);
+    if (tab === "schedule") {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+  }
+
   return (
     <main className="app-shell">
       <Header
@@ -497,7 +506,7 @@ function App() {
         )}
       </section>
 
-      <BottomNav activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav activeTab={activeTab} onChange={changeTab} />
 
       {selectedMatch && (
         <MatchDetail
@@ -554,14 +563,20 @@ function Header({
     <header className="topbar">
       <div className="app-mark" aria-label="WK 2026">WK 2026</div>
       <div className="topbar-actions">
-        <label className="search-control" aria-label="Zoek op land">
-          <span>⌕</span>
+        <div className="search-control">
+          <span aria-hidden="true">⌕</span>
           <input
+            aria-label="Zoek op land"
             value={searchQuery}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Zoek land"
           />
-        </label>
+          {searchQuery && (
+            <button type="button" onClick={() => onSearchChange("")} aria-label="Zoekopdracht wissen">
+              ×
+            </button>
+          )}
+        </div>
         <div className="admin-menu">
           <button
             className={`admin-icon-button ${adminUnlocked ? "active" : ""}`}
