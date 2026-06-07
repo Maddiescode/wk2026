@@ -329,6 +329,10 @@ function getMatchVenue(match: Match) {
   return venueById.get(match.venueId)!;
 }
 
+function hasDutchTeam(match: Match) {
+  return match.homeTeamId === "ned" || match.awayTeamId === "ned";
+}
+
 function matchSearchesCountry(match: Match, query: string) {
   const search = query.trim().toLowerCase();
   if (!search) return true;
@@ -610,8 +614,9 @@ function MatchCard({
 }) {
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
-  const isDutchMatch = home.id === "ned" || away.id === "ned";
+  const isDutchMatch = hasDutchTeam(match);
   const cardTone = isFavorite ? (isDutchMatch ? "dutch-favorite" : "favorite-match") : "";
+  const starTone = isDutchMatch ? "dutch-star" : "";
 
   return (
     <article className={`match-card ${match.status} ${cardTone}`} onClick={() => onSelectMatch(match.id)}>
@@ -631,7 +636,7 @@ function MatchCard({
         </div>
       )}
       <button
-        className={`favorite-button ${isFavorite ? "active" : ""}`}
+        className={`favorite-button ${starTone} ${isFavorite ? "active" : ""}`}
         aria-label={isFavorite ? "Verwijder favoriet" : "Markeer als favoriet"}
         onClick={(event) => {
           event.stopPropagation();
@@ -710,6 +715,7 @@ function MatchDetail({
   const { home, away } = getMatchTeams(match);
   const venue = getMatchVenue(match);
   const predictionClosed = match.status !== "scheduled";
+  const starTone = hasDutchTeam(match) ? "dutch-star" : "";
 
   return (
     <div className="sheet-backdrop" role="dialog" aria-modal="true">
@@ -718,7 +724,7 @@ function MatchDetail({
           <div className="detail-header">
             <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>
             {match.status !== "scheduled" && <StatusBadge status={match.status} />}
-            <button className={`icon-button star ${isFavorite ? "active" : ""}`} onClick={onToggleFavorite} aria-label="Favoriet">
+            <button className={`icon-button star ${starTone} ${isFavorite ? "active" : ""}`} onClick={onToggleFavorite} aria-label="Favoriet">
               {isFavorite ? "★" : "☆"}
             </button>
           </div>
@@ -1018,12 +1024,13 @@ function GroupFixtures({
         {groupMatches.map((groupMatch) => {
           const { home, away } = getMatchTeams(groupMatch);
           const isFavorite = favoriteSet.has(groupMatch.id);
+          const starTone = hasDutchTeam(groupMatch) ? "dutch-star" : "";
           return (
             <div className="group-fixture-row" key={groupMatch.id}>
               <div>
                 <span>{formatDate(groupMatch.kickoff)}</span>
                 <button
-                  className={`group-favorite-button ${isFavorite ? "active" : ""}`}
+                  className={`group-favorite-button ${starTone} ${isFavorite ? "active" : ""}`}
                   type="button"
                   onClick={() => onToggleFavorite(groupMatch.id)}
                   aria-label={isFavorite ? "Verwijder favoriet" : "Markeer als favoriet"}
