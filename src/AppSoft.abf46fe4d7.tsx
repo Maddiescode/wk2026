@@ -946,8 +946,8 @@ function MatchDetail({
   const starTone = hasDutchTeam(match) ? "dutch-star" : "";
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true">
-      <section className="detail-sheet">
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
+      <section className="detail-sheet" onClick={(event) => event.stopPropagation()}>
         <section className="detail-match-card">
           <div className="detail-header">
             <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>

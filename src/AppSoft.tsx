@@ -65,7 +65,7 @@ const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.1";
+const APP_VERSION = "2026.06.07.2";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -946,8 +946,8 @@ function MatchDetail({
   const starTone = hasDutchTeam(match) ? "dutch-star" : "";
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true">
-      <section className="detail-sheet">
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
+      <section className="detail-sheet" onClick={(event) => event.stopPropagation()}>
         <section className="detail-match-card">
           <div className="detail-header">
             <button className="icon-button" onClick={onClose} aria-label="Terug">←</button>
