@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.6";
+const APP_VERSION = "2026.06.07.7";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -479,21 +479,41 @@ function getProviderMatchKey(match: FootballDataMatch) {
   return `${getDateKey(match.kickoff)}:${homeTeamId}:${awayTeamId}`;
 }
 
+function normalizeProviderStage(stage?: string) {
+  return (stage ?? "").toLowerCase().replace("groep", "group").replace(/[^a-z0-9]/g, "");
+}
+
+function getProviderTeamPairKey(match: FootballDataMatch) {
+  const homeTeamId = findTeamIdByProviderName(match.homeTeamName);
+  const awayTeamId = findTeamIdByProviderName(match.awayTeamName);
+  if (!homeTeamId || !awayTeamId) return null;
+  return `${normalizeProviderStage(match.stage)}:${homeTeamId}:${awayTeamId}`;
+}
+
+function getLocalTeamPairKey(match: Match) {
+  return `${normalizeProviderStage(match.stage)}:${match.homeTeamId}:${match.awayTeamId}`;
+}
+
 function mergeFootballDataMatches(baseMatches: Match[], providerMatches: FootballDataMatch[]) {
   if (!providerMatches.length) return baseMatches;
   const byKey = new Map<string, FootballDataMatch>();
+  const byTeamPair = new Map<string, FootballDataMatch>();
   providerMatches.forEach((providerMatch) => {
     const key = getProviderMatchKey(providerMatch);
     if (key) byKey.set(key, providerMatch);
+    const teamPairKey = getProviderTeamPairKey(providerMatch);
+    if (teamPairKey) byTeamPair.set(teamPairKey, providerMatch);
   });
 
   const matchedProviderIds = new Set<string>();
   const mergedMatches = baseMatches.map((match) => {
     const key = `${getDateKey(match.kickoff)}:${match.homeTeamId}:${match.awayTeamId}`;
     const reversedKey = `${getDateKey(match.kickoff)}:${match.awayTeamId}:${match.homeTeamId}`;
-    const providerMatch = byKey.get(key) ?? byKey.get(reversedKey);
+    const teamPairKey = getLocalTeamPairKey(match);
+    const reversedTeamPairKey = `${normalizeProviderStage(match.stage)}:${match.awayTeamId}:${match.homeTeamId}`;
+    const providerMatch = byKey.get(key) ?? byKey.get(reversedKey) ?? byTeamPair.get(teamPairKey) ?? byTeamPair.get(reversedTeamPairKey);
     if (!providerMatch) return match;
-    const isReversed = byKey.has(reversedKey) && !byKey.has(key);
+    const isReversed = (byKey.has(reversedKey) && !byKey.has(key)) || (byTeamPair.has(reversedTeamPairKey) && !byTeamPair.has(teamPairKey));
     if (providerMatch.providerMatchId) matchedProviderIds.add(providerMatch.providerMatchId);
 
     return {
