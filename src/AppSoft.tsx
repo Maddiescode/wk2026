@@ -32,6 +32,7 @@ interface MatchEvent {
 
 interface Match {
   id: string;
+  providerMatchId?: string;
   stage: string;
   kickoff: string;
   venueId: string;
@@ -73,6 +74,18 @@ interface LeaderboardRow {
 
 type DemoMode = "scores" | null;
 
+type FootballDataMatch = {
+  id: string;
+  providerMatchId?: string;
+  stage?: string;
+  status: MatchStatus;
+  kickoff?: string;
+  homeTeamName?: string;
+  awayTeamName?: string;
+  homeScore?: number;
+  awayScore?: number;
+};
+
 type SupabasePredictionRow = {
   id: string;
   match_id: string;
@@ -86,8 +99,9 @@ type SupabasePredictionRow = {
 const SUPABASE_URL = "https://kxszledwzxhaasdjqntt.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
+const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.4";
+const APP_VERSION = "2026.06.07.5";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -176,6 +190,19 @@ async function renameSharedPredictionsForClient(clientId: string, name: string) 
   if (!response.ok) throw new Error("Could not rename predictions");
   const rows = await response.json();
   return rows.map(mapPredictionRow);
+}
+
+async function fetchFootballDataMatches() {
+  const response = await fetch(`${FOOTBALL_DATA_ENDPOINT}?resource=matches`, {
+    cache: "no-store",
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+  if (!response.ok) throw new Error("Could not load football-data.org matches");
+  const data = await response.json();
+  return (data.matches ?? []) as FootballDataMatch[];
 }
 
 const teams: Team[] = [
@@ -365,6 +392,123 @@ function createDemoMatches(baseMatches: Match[]) {
   return baseMatches.map((match) => (demoScores[match.id] ? { ...match, ...demoScores[match.id] } : match));
 }
 
+function normalizeMatchName(value?: string) {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function getTeamAliases(team: Team) {
+  const aliases: Record<string, string[]> = {
+    bih: ["bosniaandherzegovina", "bosniaherzegovina"],
+    cod: ["congodr", "drcongo", "congodemocraticrepublic", "democraticrepublicofcongo"],
+    civ: ["cotedivoire", "ivorycoast", "coteivoire"],
+    cpv: ["capeverde", "caboverde", "kaapverdie"],
+    cuw: ["curacao", "curaçao"],
+    cze: ["czechia", "czechrepublic", "tsjechie"],
+    eng: ["england", "engeland"],
+    ger: ["germany", "duitsland"],
+    hai: ["haiti", "haiti"],
+    irn: ["iran", "iriran", "iriran"],
+    kor: ["korearepublic", "southkorea", "republicofkorea"],
+    ned: ["netherlands", "thenetherlands", "holland", "nederland"],
+    nzl: ["newzealand", "nieuwzeeland"],
+    rsa: ["southafrica", "zuidafrika"],
+    sco: ["scotland", "schotland"],
+    sui: ["switzerland", "zwitserland"],
+    tur: ["turkiye", "turkey", "turkije"],
+    usa: ["unitedstates", "unitedstatesofamerica", "usa", "verenigdestaten"],
+  };
+  return [team.name, team.shortName, ...(aliases[team.id] ?? [])].map(normalizeMatchName);
+}
+
+const teamAliasEntries = teams.flatMap((team) => getTeamAliases(team).map((alias) => ({ alias, teamId: team.id })));
+
+function findTeamIdByProviderName(name?: string) {
+  const normalized = normalizeMatchName(name);
+  if (!normalized) return null;
+  const exact = teamAliasEntries.find((entry) => entry.alias === normalized);
+  if (exact) return exact.teamId;
+  const partial = teamAliasEntries.find((entry) => normalized.includes(entry.alias) || entry.alias.includes(normalized));
+  return partial?.teamId ?? null;
+}
+
+function createProviderTeamId(name?: string, fallback = "team") {
+  const existingTeamId = findTeamIdByProviderName(name);
+  if (existingTeamId) return existingTeamId;
+  const normalized = normalizeMatchName(name);
+  return normalized ? `api-${normalized}` : `api-${fallback}`;
+}
+
+function createFallbackTeam(teamId: string): Team {
+  const label = teamId.replace(/^api-/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
+  const name = label ? label.charAt(0).toUpperCase() + label.slice(1) : "Nog onbekend";
+  return {
+    id: teamId,
+    name,
+    shortName: "TBD",
+    flag: "–",
+    flagClass: "code",
+    primaryColor: "#9ca3af",
+  };
+}
+
+function getProviderMatchKey(match: FootballDataMatch) {
+  const homeTeamId = findTeamIdByProviderName(match.homeTeamName);
+  const awayTeamId = findTeamIdByProviderName(match.awayTeamName);
+  if (!homeTeamId || !awayTeamId || !match.kickoff) return null;
+  return `${getDateKey(match.kickoff)}:${homeTeamId}:${awayTeamId}`;
+}
+
+function mergeFootballDataMatches(baseMatches: Match[], providerMatches: FootballDataMatch[]) {
+  if (!providerMatches.length) return baseMatches;
+  const byKey = new Map<string, FootballDataMatch>();
+  providerMatches.forEach((providerMatch) => {
+    const key = getProviderMatchKey(providerMatch);
+    if (key) byKey.set(key, providerMatch);
+  });
+
+  const matchedProviderIds = new Set<string>();
+  const mergedMatches = baseMatches.map((match) => {
+    const key = `${getDateKey(match.kickoff)}:${match.homeTeamId}:${match.awayTeamId}`;
+    const reversedKey = `${getDateKey(match.kickoff)}:${match.awayTeamId}:${match.homeTeamId}`;
+    const providerMatch = byKey.get(key) ?? byKey.get(reversedKey);
+    if (!providerMatch) return match;
+    const isReversed = byKey.has(reversedKey) && !byKey.has(key);
+    if (providerMatch.providerMatchId) matchedProviderIds.add(providerMatch.providerMatchId);
+
+    return {
+      ...match,
+      providerMatchId: providerMatch.providerMatchId,
+      kickoff: providerMatch.kickoff ?? match.kickoff,
+      status: providerMatch.status,
+      homeScore: isReversed ? providerMatch.awayScore : providerMatch.homeScore,
+      awayScore: isReversed ? providerMatch.homeScore : providerMatch.awayScore,
+    };
+  });
+
+  const providerOnlyMatches = providerMatches
+    .filter((providerMatch) => providerMatch.providerMatchId && !matchedProviderIds.has(providerMatch.providerMatchId))
+    .filter((providerMatch) => providerMatch.kickoff && providerMatch.homeTeamName && providerMatch.awayTeamName)
+    .map((providerMatch) => ({
+      id: `fd-${providerMatch.providerMatchId}`,
+      providerMatchId: providerMatch.providerMatchId,
+      stage: providerMatch.stage ?? "WK 2026",
+      kickoff: providerMatch.kickoff!,
+      venueId: "api-venue",
+      homeTeamId: createProviderTeamId(providerMatch.homeTeamName, `${providerMatch.providerMatchId}-home`),
+      awayTeamId: createProviderTeamId(providerMatch.awayTeamName, `${providerMatch.providerMatchId}-away`),
+      status: providerMatch.status,
+      homeScore: providerMatch.homeScore,
+      awayScore: providerMatch.awayScore,
+      events: [],
+    }));
+
+  return [...mergedMatches, ...providerOnlyMatches];
+}
+
 function useLocalStorageState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -413,13 +557,13 @@ function formatTime(iso: string) {
 
 function getMatchTeams(match: Match) {
   return {
-    home: teamById.get(match.homeTeamId)!,
-    away: teamById.get(match.awayTeamId)!,
+    home: teamById.get(match.homeTeamId) ?? createFallbackTeam(match.homeTeamId),
+    away: teamById.get(match.awayTeamId) ?? createFallbackTeam(match.awayTeamId),
   };
 }
 
 function getMatchVenue(match: Match) {
-  return venueById.get(match.venueId)!;
+  return venueById.get(match.venueId) ?? { id: match.venueId, name: "Locatie volgt", city: "" };
 }
 
 function hasDutchTeam(match: Match) {
@@ -579,7 +723,11 @@ function isNewerVersion(remoteVersion: string, currentVersion: string) {
 
 function App() {
   const demoMode = getDemoMode();
-  const appMatches = useMemo(() => (demoMode === "scores" ? createDemoMatches(matches) : matches), [demoMode]);
+  const [footballDataMatches, setFootballDataMatches] = useState<FootballDataMatch[]>([]);
+  const appMatches = useMemo(() => {
+    const baseMatches = demoMode === "scores" ? createDemoMatches(matches) : matches;
+    return demoMode === "scores" ? baseMatches : mergeFootballDataMatches(baseMatches, footballDataMatches);
+  }, [demoMode, footballDataMatches]);
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
@@ -622,6 +770,33 @@ function App() {
       document.body.style.overflow = originalOverflow;
     };
   }, [selectedMatch, selectedPlayerName]);
+
+  async function loadFootballDataMatches() {
+    const providerMatches = await fetchFootballDataMatches();
+    setFootballDataMatches(providerMatches);
+  }
+
+  useEffect(() => {
+    if (demoMode === "scores") return;
+
+    loadFootballDataMatches().catch(() => {
+      // Mock data remains the fallback when the free API is unavailable or not configured yet.
+    });
+
+    function refreshFootballDataWhenVisible() {
+      if (document.visibilityState === "visible") loadFootballDataMatches().catch(() => undefined);
+    }
+
+    const intervalId = window.setInterval(() => {
+      loadFootballDataMatches().catch(() => undefined);
+    }, 90000);
+    document.addEventListener("visibilitychange", refreshFootballDataWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", refreshFootballDataWhenVisible);
+    };
+  }, [demoMode]);
 
   async function loadAllPredictions() {
     const sharedPredictions = await fetchAllSharedPredictions();
@@ -1508,7 +1683,7 @@ function getGroupStandings(stage: string, allMatches: Match[]) {
 
   const rows = new Map<string, StandingRow>();
   teamOrder.forEach((teamId, order) => {
-    const team = teamById.get(teamId)!;
+    const team = teamById.get(teamId) ?? createFallbackTeam(teamId);
     rows.set(teamId, {
       team,
       order,
