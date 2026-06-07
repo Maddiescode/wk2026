@@ -655,11 +655,14 @@ function Header({
             </div>
           )}
         </div>
-        {updateAvailable && (
-          <button className="update-icon-button" type="button" onClick={onRefreshApp} aria-label="Update laden">
-            ↻
-          </button>
-        )}
+        <button
+          className={`update-icon-button ${updateAvailable ? "has-update" : ""}`}
+          type="button"
+          onClick={onRefreshApp}
+          aria-label={updateAvailable ? "Update laden" : "App vernieuwen"}
+        >
+          ↻
+        </button>
         {liveCount > 0 && <span className="pill live-dot">{liveCount} live</span>}
       </div>
     </header>

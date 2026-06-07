@@ -135,15 +135,21 @@ button {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(249, 115, 22, 0.22);
+  border: 1px solid rgba(23, 27, 33, 0.1);
   border-radius: 8px;
-  background: rgba(255, 237, 213, 0.78);
-  color: #ff5a00;
+  background: rgba(255, 255, 255, 0.68);
+  color: var(--accent);
   font-size: 1.12rem;
   font-weight: 650;
 }
 
-.update-icon-button::after {
+.update-icon-button.has-update {
+  border-color: rgba(249, 115, 22, 0.22);
+  background: rgba(255, 237, 213, 0.78);
+  color: #ff5a00;
+}
+
+.update-icon-button.has-update::after {
   content: "";
   position: absolute;
   top: 5px;
