@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.12.3";
+const APP_VERSION = "2026.06.12.4";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -2198,7 +2198,7 @@ function EmptyState({ title, text, action }: { title: string; text: string; acti
 
 function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab: TabKey) => void }) {
   const items: { key: TabKey; label: string; icon?: string; materialIcon?: string }[] = [
-    { key: "schedule", label: "Speelschema", icon: "▦" },
+    { key: "schedule", label: "Speelschema", materialIcon: "sports_soccer" },
     { key: "favorites", label: "Mijn wedstrijden", icon: "★" },
     { key: "results", label: "Uitslagen", materialIcon: "sports_score" },
     { key: "leaderboard", label: "Scorebord", materialIcon: "crown" },
