@@ -433,23 +433,39 @@ button {
   letter-spacing: 0;
 }
 
+.flag-england {
+  border: 1px solid rgba(23, 27, 33, 0.08);
+  background:
+    linear-gradient(90deg, transparent 0 42%, #d91f2d 42% 58%, transparent 58% 100%),
+    linear-gradient(0deg, transparent 0 42%, #d91f2d 42% 58%, transparent 58% 100%),
+    #fff;
+}
+
+.flag-scotland {
+  border: 1px solid rgba(23, 27, 33, 0.08);
+  background:
+    linear-gradient(34deg, transparent 0 43%, #fff 43% 57%, transparent 57% 100%),
+    linear-gradient(-34deg, transparent 0 43%, #fff 43% 57%, transparent 57% 100%),
+    #1d4ed8;
+}
+
 .score-block {
   display: inline-grid;
   grid-template-columns: auto auto auto;
-  gap: 7px;
+  gap: 5px;
   align-items: center;
   justify-content: center;
-  min-width: 34px;
-  min-height: 34px;
-  padding: 0 6px;
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 5px;
   color: #111827;
   text-align: center;
 }
 
 .score-block.has-score {
-  min-width: 58px;
-  min-height: 40px;
-  padding: 0 10px;
+  min-width: 48px;
+  min-height: 32px;
+  padding: 0 8px;
   border: 1px solid rgba(23, 27, 33, 0.08);
   border-radius: 8px;
   background: rgba(229, 231, 235, 0.78);
@@ -457,8 +473,8 @@ button {
 }
 
 .score-block strong {
-  font-size: 1.18rem;
-  font-weight: 650;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 .versus {

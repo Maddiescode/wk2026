@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.12.1";
+const APP_VERSION = "2026.06.12.2";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -210,7 +210,7 @@ const teams: Team[] = [
   { id: "aus", name: "Australië", shortName: "AUS", flag: "🇦🇺", primaryColor: "#facc15" },
   { id: "aut", name: "Oostenrijk", shortName: "AUT", flag: "🇦🇹", primaryColor: "#dc2626" },
   { id: "bel", name: "België", shortName: "BEL", flag: "🇧🇪", primaryColor: "#111827" },
-  { id: "bih", name: "Bosnië en Herzegovina", shortName: "BIH", flag: "🇧🇦", primaryColor: "#1d4ed8" },
+  { id: "bih", name: "Bosnië H", shortName: "BIH", flag: "🇧🇦", primaryColor: "#1d4ed8" },
   { id: "can", name: "Canada", shortName: "CAN", flag: "🇨🇦", primaryColor: "#dc2626" },
   { id: "cpv", name: "Kaapverdië", shortName: "CPV", flag: "🇨🇻", primaryColor: "#2563eb" },
   { id: "civ", name: "Ivoorkust", shortName: "CIV", flag: "🇨🇮", primaryColor: "#f97316" },
@@ -221,7 +221,7 @@ const teams: Team[] = [
   { id: "cze", name: "Tsjechië", shortName: "CZE", flag: "🇨🇿", primaryColor: "#2563eb" },
   { id: "ecu", name: "Ecuador", shortName: "ECU", flag: "🇪🇨", primaryColor: "#eab308" },
   { id: "egy", name: "Egypte", shortName: "EGY", flag: "🇪🇬", primaryColor: "#dc2626" },
-  { id: "eng", name: "Engeland", shortName: "ENG", flag: "ENG", flagClass: "code", primaryColor: "#e5e7eb" },
+  { id: "eng", name: "Engeland", shortName: "ENG", flag: "", flagClass: "england", primaryColor: "#e5e7eb" },
   { id: "ned", name: "Nederland", shortName: "NED", flag: "🇳🇱", primaryColor: "#f97316" },
   { id: "bra", name: "Brazilië", shortName: "BRA", flag: "🇧🇷", primaryColor: "#16a34a" },
   { id: "arg", name: "Argentinië", shortName: "ARG", flag: "🇦🇷", primaryColor: "#38bdf8" },
@@ -243,7 +243,7 @@ const teams: Team[] = [
   { id: "por", name: "Portugal", shortName: "POR", flag: "🇵🇹", primaryColor: "#dc2626" },
   { id: "qat", name: "Qatar", shortName: "QAT", flag: "🇶🇦", primaryColor: "#7f1d1d" },
   { id: "ksa", name: "Saudi-Arabië", shortName: "KSA", flag: "🇸🇦", primaryColor: "#15803d" },
-  { id: "sco", name: "Schotland", shortName: "SCO", flag: "SCO", flagClass: "code", primaryColor: "#1d4ed8" },
+  { id: "sco", name: "Schotland", shortName: "SCO", flag: "", flagClass: "scotland", primaryColor: "#1d4ed8" },
   { id: "sen", name: "Senegal", shortName: "SEN", flag: "🇸🇳", primaryColor: "#16a34a" },
   { id: "rsa", name: "Zuid-Afrika", shortName: "RSA", flag: "🇿🇦", primaryColor: "#16a34a" },
   { id: "esp", name: "Spanje", shortName: "ESP", flag: "🇪🇸", primaryColor: "#eab308" },
@@ -1342,7 +1342,7 @@ function LeaderboardView({
                 <div className="leaderboard-player">
                   <strong>{row.name}{isOwn && <em>Jij</em>}</strong>
                   <span>
-                    {row.predictionsCount} voorspeld · {row.exactCount} exact · {row.outcomeCount} uitkomst goed
+                  {row.predictionsCount} voorspeld · {row.exactCount} exact · {row.outcomeCount} winnaar goed
                   </span>
                 </div>
                 <b>{row.points} punten</b>
