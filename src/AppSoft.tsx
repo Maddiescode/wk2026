@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.12.2";
+const APP_VERSION = "2026.06.12.3";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -599,6 +599,10 @@ function isBeforeToday(iso: string) {
   const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const matchDayStart = new Date(matchDate.getFullYear(), matchDate.getMonth(), matchDate.getDate());
   return matchDayStart.getTime() < todayStart.getTime();
+}
+
+function isPlayedMatch(match: Match) {
+  return match.status === "finished" || isBeforeToday(match.kickoff);
 }
 
 function hasMatchStarted(match: Match, now = new Date()) {
@@ -1285,11 +1289,27 @@ function ScheduleView(props: MatchListProps) {
 }
 
 function FavoritesView(props: MatchListProps) {
+  const [playedOpen, setPlayedOpen] = useState(false);
+  const upcomingMatches = props.matches.filter((match) => !isPlayedMatch(match));
+  const playedMatches = props.matches.filter(isPlayedMatch);
+
   return (
     <>
       <SectionTitle title="Mijn wedstrijden" />
       {props.matches.length ? (
-        <MatchList {...props} />
+        <div className="favorites-sections">
+          {upcomingMatches.length > 0 && <MatchList {...props} matches={upcomingMatches} />}
+          {playedMatches.length > 0 && (
+            <section className="played-favorites">
+              <button type="button" onClick={() => setPlayedOpen((current) => !current)}>
+                <span>Gespeelde wedstrijden</span>
+                <small>{playedMatches.length}</small>
+                <b>{playedOpen ? "−" : "+"}</b>
+              </button>
+              {playedOpen && <MatchList {...props} matches={playedMatches} />}
+            </section>
+          )}
+        </div>
       ) : (
         <EmptyState
           title="Nog geen favorieten"
@@ -1301,22 +1321,77 @@ function FavoritesView(props: MatchListProps) {
 }
 
 function ResultsView({ matches, ...rest }: MatchListProps) {
+  const [viewMode, setViewMode] = useState<"results" | "standings">("results");
   const resultMatches = matches.filter(
     (match) => isBeforeToday(match.kickoff) || match.status === "live" || match.status === "finished"
   );
 
   return (
     <>
-      <SectionTitle title="Uitslagen" />
-      {resultMatches.length ? (
+      <ViewTabs
+        items={[
+          { key: "results", label: "Uitslagen" },
+          { key: "standings", label: "Standen" },
+        ]}
+        activeKey={viewMode}
+        onChange={(key) => setViewMode(key as "results" | "standings")}
+      />
+      {viewMode === "results" && resultMatches.length ? (
         <MatchList matches={resultMatches} {...rest} />
-      ) : (
+      ) : viewMode === "results" ? (
         <EmptyState
           title="Nog geen uitslagen"
           text="Het WK 2026 begint op 11 juni. Zodra wedstrijden live zijn of afgelopen, verschijnen ze hier."
         />
+      ) : (
+        <StandingsOverview matches={matches} />
       )}
     </>
+  );
+}
+
+function ViewTabs({
+  items,
+  activeKey,
+  onChange,
+}: {
+  items: { key: string; label: string }[];
+  activeKey: string;
+  onChange: (key: string) => void;
+}) {
+  return (
+    <div className="view-tabs">
+      {items.map((item) => (
+        <button
+          key={item.key}
+          className={activeKey === item.key ? "active" : ""}
+          type="button"
+          onClick={() => onChange(item.key)}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StandingsOverview({ matches }: { matches: Match[] }) {
+  const groups = matches.reduce<string[]>((stages, match) => {
+    if (!match.stage.startsWith("Groep") || stages.includes(match.stage)) return stages;
+    return [...stages, match.stage];
+  }, []);
+
+  return (
+    <div className="standings-overview">
+      {groups.map((stage) => (
+        <section className="standings-panel" key={stage}>
+          <div className="panel-title">
+            <h2>{stage}</h2>
+          </div>
+          <StandingsTable standings={getGroupStandings(stage, matches)} />
+        </section>
+      ))}
+    </div>
   );
 }
 
@@ -1825,34 +1900,40 @@ function GroupStandings({ match, allMatches }: { match: Match; allMatches: Match
       <div className="panel-title">
         <h2>Stand {match.stage}</h2>
       </div>
-      <table className="standings-table">
-        <thead>
-          <tr>
-            <th>Land</th>
-            <th>W</th>
-            <th>G</th>
-            <th>V</th>
-            <th>DS</th>
-            <th>P</th>
-          </tr>
-        </thead>
-        <tbody>
-          {standings.map((row) => (
-            <tr key={row.team.id}>
-              <td>
-                <TeamFlag team={row.team} />
-                {row.team.name}
-              </td>
-              <td>{row.wins}</td>
-              <td>{row.draws}</td>
-              <td>{row.losses}</td>
-              <td>{row.goalsFor - row.goalsAgainst}</td>
-              <td>{row.points}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <StandingsTable standings={standings} />
     </section>
+  );
+}
+
+function StandingsTable({ standings }: { standings: StandingRow[] }) {
+  return (
+    <table className="standings-table">
+      <thead>
+        <tr>
+          <th>Land</th>
+          <th>W</th>
+          <th>G</th>
+          <th>V</th>
+          <th>DS</th>
+          <th>P</th>
+        </tr>
+      </thead>
+      <tbody>
+        {standings.map((row) => (
+          <tr key={row.team.id}>
+            <td>
+              <TeamFlag team={row.team} />
+              {row.team.name}
+            </td>
+            <td>{row.wins}</td>
+            <td>{row.draws}</td>
+            <td>{row.losses}</td>
+            <td>{row.goalsFor - row.goalsAgainst}</td>
+            <td>{row.points}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -2116,11 +2197,11 @@ function EmptyState({ title, text, action }: { title: string; text: string; acti
 }
 
 function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab: TabKey) => void }) {
-  const items: { key: TabKey; label: string; icon: string }[] = [
+  const items: { key: TabKey; label: string; icon?: string; materialIcon?: string }[] = [
     { key: "schedule", label: "Speelschema", icon: "▦" },
     { key: "favorites", label: "Mijn wedstrijden", icon: "★" },
-    { key: "results", label: "Uitslagen", icon: "✓" },
-    { key: "leaderboard", label: "Scorebord", icon: "🏅" },
+    { key: "results", label: "Uitslagen", materialIcon: "sports_score" },
+    { key: "leaderboard", label: "Scorebord", materialIcon: "crown" },
   ];
 
   return (
@@ -2133,7 +2214,13 @@ function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab:
           aria-label={item.label}
           title={item.label}
         >
-          <span>{item.icon}</span>
+          {item.materialIcon ? (
+            <span className="material-symbols-rounded" aria-hidden="true">
+              {item.materialIcon}
+            </span>
+          ) : (
+            <span>{item.icon}</span>
+          )}
         </button>
       ))}
     </nav>

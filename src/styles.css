@@ -602,9 +602,58 @@ button {
   font-size: 1.08rem;
 }
 
+.bottom-nav .material-symbols-rounded {
+  font-size: 1.22rem;
+  font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+  line-height: 1;
+}
+
 .bottom-nav button.active {
   background: #171b21;
   color: #fff;
+}
+
+.favorites-sections {
+  display: grid;
+  gap: 12px;
+}
+
+.played-favorites {
+  display: grid;
+  gap: 10px;
+}
+
+.played-favorites > button {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 4px 0 0;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+
+.played-favorites > button span {
+  font-size: 0.84rem;
+  font-weight: 550;
+}
+
+.played-favorites > button small {
+  color: rgba(91, 99, 110, 0.74);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.played-favorites > button b {
+  width: 20px;
+  color: rgba(91, 99, 110, 0.82);
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: center;
 }
 
 .sheet-backdrop {
@@ -792,6 +841,32 @@ button {
   font-size: 0.8rem;
   font-weight: 650;
   text-align: right;
+}
+
+.view-tabs {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+.view-tabs button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(23, 27, 33, 0.34);
+  font-size: 1.28rem;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.view-tabs button.active {
+  color: var(--ink);
+}
+
+.standings-overview {
+  display: grid;
+  gap: 12px;
 }
 
 .prediction-panel form {
