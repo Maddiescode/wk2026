@@ -450,9 +450,10 @@ button {
   min-width: 58px;
   min-height: 40px;
   padding: 0 10px;
+  border: 1px solid rgba(23, 27, 33, 0.08);
   border-radius: 8px;
-  background: #171b21;
-  color: #fff;
+  background: rgba(229, 231, 235, 0.78);
+  color: #111827;
 }
 
 .score-block strong {
@@ -482,14 +483,36 @@ button {
 }
 
 .status-badge.live {
-  background: var(--red);
-  color: #fff;
-  box-shadow: 0 0 0 5px rgba(217, 35, 63, 0.1);
+  gap: 6px;
+  background: rgba(217, 35, 63, 0.08);
+  color: #b91c1c;
+  box-shadow: none;
 }
 
 .status-badge.finished {
   background: #e8edf1;
   color: #334155;
+}
+
+.live-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 0 0 rgba(217, 35, 63, 0.42);
+  animation: live-pulse 1.35s ease-out infinite;
+}
+
+@keyframes live-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(217, 35, 63, 0.42);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(217, 35, 63, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(217, 35, 63, 0);
+  }
 }
 
 .favorite-button {

@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.07.8";
+const APP_VERSION = "2026.06.12.1";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -601,6 +601,23 @@ function isBeforeToday(iso: string) {
   return matchDayStart.getTime() < todayStart.getTime();
 }
 
+function hasMatchStarted(match: Match, now = new Date()) {
+  return new Date(match.kickoff).getTime() <= now.getTime();
+}
+
+function getEffectiveMatchStatus(match: Match, now = new Date()): MatchStatus {
+  if (match.status === "finished") return "finished";
+  if (match.status === "live") return "live";
+  return hasMatchStarted(match, now) ? "live" : "scheduled";
+}
+
+function applyEffectiveMatchStatuses(matchList: Match[], now: Date) {
+  return matchList.map((match) => {
+    const status = getEffectiveMatchStatus(match, now);
+    return status === match.status ? match : { ...match, status };
+  });
+}
+
 function formatTime(iso: string) {
   return new Intl.DateTimeFormat("nl-NL", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
 }
@@ -774,10 +791,12 @@ function isNewerVersion(remoteVersion: string, currentVersion: string) {
 function App() {
   const demoMode = getDemoMode();
   const [footballDataMatches, setFootballDataMatches] = useState<FootballDataMatch[]>([]);
+  const [now, setNow] = useState(() => new Date());
   const appMatches = useMemo(() => {
     const baseMatches = demoMode === "scores" ? createDemoMatches(matches) : matches;
-    return demoMode === "scores" ? baseMatches : mergeFootballDataMatches(baseMatches, footballDataMatches);
-  }, [demoMode, footballDataMatches]);
+    const sourceMatches = demoMode === "scores" ? baseMatches : mergeFootballDataMatches(baseMatches, footballDataMatches);
+    return applyEffectiveMatchStatuses(sourceMatches, now);
+  }, [demoMode, footballDataMatches, now]);
   const [activeTab, setActiveTab] = useState<TabKey>("schedule");
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedPlayerName, setSelectedPlayerName] = useState<string | null>(null);
@@ -820,6 +839,11 @@ function App() {
       document.body.style.overflow = originalOverflow;
     };
   }, [selectedMatch, selectedPlayerName]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNow(new Date()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   async function loadFootballDataMatches() {
     const providerMatches = await fetchFootballDataMatches();
@@ -1465,7 +1489,12 @@ function ScoreBlock({ match }: { match: Match }) {
 }
 
 function StatusBadge({ status }: { status: MatchStatus }) {
-  return <span className={`status-badge ${status}`}>{statusLabel(status)}</span>;
+  return (
+    <span className={`status-badge ${status}`}>
+      {status === "live" && <span className="live-pulse" />}
+      {statusLabel(status)}
+    </span>
+  );
 }
 
 function MatchDetail({
