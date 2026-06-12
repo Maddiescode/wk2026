@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.12.4";
+const APP_VERSION = "2026.06.12.5";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -1298,7 +1298,6 @@ function FavoritesView(props: MatchListProps) {
       <SectionTitle title="Mijn wedstrijden" />
       {props.matches.length ? (
         <div className="favorites-sections">
-          {upcomingMatches.length > 0 && <MatchList {...props} matches={upcomingMatches} />}
           {playedMatches.length > 0 && (
             <section className="played-favorites">
               <button type="button" onClick={() => setPlayedOpen((current) => !current)}>
@@ -1309,6 +1308,7 @@ function FavoritesView(props: MatchListProps) {
               {playedOpen && <MatchList {...props} matches={playedMatches} />}
             </section>
           )}
+          {upcomingMatches.length > 0 && <MatchList {...props} matches={upcomingMatches} />}
         </div>
       ) : (
         <EmptyState
