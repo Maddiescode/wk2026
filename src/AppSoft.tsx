@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.13.3";
+const APP_VERSION = "2026.06.13.4";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -1070,7 +1070,7 @@ function App() {
 
   function changeTab(tab: TabKey) {
     setActiveTab(tab);
-    if (tab === "schedule") {
+    if (tab !== "schedule") {
       requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
       });

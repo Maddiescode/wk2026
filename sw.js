@@ -1,8 +1,8 @@
-const APP_VERSION = "2026.06.13.3";
+const APP_VERSION = "2026.06.13.4";
 const CACHE_NAME = `app-cache-v${APP_VERSION}`;
 const STATIC_ASSETS = [
   "./src/styles-soft.952465fb30.css",
-  "./src/AppSoft.a9cdc3db2e.tsx",
+  "./src/AppSoft.9cc998c56a.tsx",
   "./vendor/react.production.d949f1c368.min.js",
   "./vendor/react-dom.production.35f4f974f4.min.js",
   "./vendor/babel.7f55bd5c3e.min.js",
