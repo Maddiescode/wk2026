@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.12.5";
+const APP_VERSION = "2026.06.13.1";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -807,6 +807,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useLocalStorageState<string[]>("wk:favorites", []);
   const [clientId] = useLocalStorageState<string>("wk:client-id", createClientId());
+  const [playerName, setPlayerName] = useLocalStorageState<string>("wk:player-name", "");
   const [predictionsByMatch, setPredictionsByMatch] = useLocalStorageState<Record<string, Prediction[]>>("wk:predictions", {});
   const [adminUnlocked, setAdminUnlocked] = useLocalStorageState<boolean>("wk:admin", false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -834,6 +835,14 @@ function App() {
   const selectedPlayerPredictions = selectedPlayerName
     ? getPredictionsForPlayer(selectedPlayerName, allPredictions, appMatches)
     : [];
+
+  useEffect(() => {
+    if (playerName.trim()) return;
+    const latestOwnPrediction = getLatestPredictions(allPredictions)
+      .filter((prediction) => prediction.clientId === clientId && prediction.name.trim())
+      .sort((a, b) => getPredictionTime(b) - getPredictionTime(a))[0];
+    if (latestOwnPrediction) setPlayerName(latestOwnPrediction.name.trim());
+  }, [allPredictions, clientId, playerName, setPlayerName]);
 
   useEffect(() => {
     if (!selectedMatch && !selectedPlayerName) return;
@@ -1003,6 +1012,8 @@ function App() {
   }
 
   async function savePrediction(prediction: Prediction) {
+    const trimmedName = prediction.name.trim();
+    if (trimmedName) setPlayerName(trimmedName);
     const localPrediction = { ...prediction, clientId, updatedAt: new Date().toISOString() };
     const savedPrediction = await saveSharedPrediction(localPrediction, clientId);
     setPredictionsByMatch((current: Record<string, Prediction[]>) => {
@@ -1047,6 +1058,7 @@ function App() {
         ])
       )
     );
+    setPlayerName(trimmedName);
     setSelectedPlayerName(trimmedName);
   }
 
@@ -1154,6 +1166,7 @@ function App() {
           favoriteSet={favoriteSet}
           predictions={predictionsByMatch[selectedMatch.id] ?? []}
           clientId={clientId}
+          playerName={playerName}
           adminUnlocked={adminUnlocked}
           onClose={() => setSelectedMatchId(null)}
           onToggleFavorite={() => toggleFavorite(selectedMatch.id)}
@@ -1579,6 +1592,7 @@ function MatchDetail({
   favoriteSet,
   predictions,
   clientId,
+  playerName,
   adminUnlocked,
   onClose,
   onToggleFavorite,
@@ -1594,6 +1608,7 @@ function MatchDetail({
   favoriteSet: Set<string>;
   predictions: Prediction[];
   clientId: string;
+  playerName: string;
   adminUnlocked: boolean;
   onClose: () => void;
   onToggleFavorite: () => void;
@@ -1638,6 +1653,7 @@ function MatchDetail({
           match={match}
           predictions={predictions}
           clientId={clientId}
+          playerName={playerName}
           adminUnlocked={adminUnlocked}
           disabled={predictionClosed}
           onSavePrediction={onSavePrediction}
@@ -1669,6 +1685,7 @@ function PredictionForm({
   match,
   predictions,
   clientId,
+  playerName,
   adminUnlocked,
   disabled,
   onSavePrediction,
@@ -1679,6 +1696,7 @@ function PredictionForm({
   match: Match;
   predictions: Prediction[];
   clientId: string;
+  playerName: string;
   adminUnlocked: boolean;
   disabled: boolean;
   onSavePrediction: (prediction: Prediction) => Promise<void> | void;
@@ -1689,16 +1707,16 @@ function PredictionForm({
   const { home, away } = getMatchTeams(match);
   const ownPrediction = predictions.find((prediction) => prediction.clientId === clientId);
   const hasCurrentScore = match.homeScore !== undefined && match.awayScore !== undefined;
-  const [name, setName] = useState(ownPrediction?.name ?? "");
+  const [name, setName] = useState(ownPrediction?.name ?? playerName);
   const [homeScore, setHomeScore] = useState(String(ownPrediction?.homeScore ?? ""));
   const [awayScore, setAwayScore] = useState(String(ownPrediction?.awayScore ?? ""));
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    setName(ownPrediction?.name ?? "");
+    setName(ownPrediction?.name ?? playerName);
     setHomeScore(String(ownPrediction?.homeScore ?? ""));
     setAwayScore(String(ownPrediction?.awayScore ?? ""));
-  }, [match.id, ownPrediction?.name, ownPrediction?.homeScore, ownPrediction?.awayScore]);
+  }, [match.id, ownPrediction?.name, ownPrediction?.homeScore, ownPrediction?.awayScore, playerName]);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
