@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.13.1";
+const APP_VERSION = "2026.06.13.2";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -818,7 +818,7 @@ function App() {
     () => [...appMatches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
     [appMatches]
   );
-  const scheduleMatches = sortedMatches.filter((match) => !isBeforeToday(match.kickoff));
+  const scheduleMatches = sortedMatches.filter((match) => match.status !== "finished");
 
   const selectedMatch = selectedMatchId ? appMatches.find((match) => match.id === selectedMatchId) ?? null : null;
   const favoriteSet = new Set(favoriteIds);
