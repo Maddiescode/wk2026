@@ -1,4 +1,4 @@
-const { useEffect, useMemo, useState } = React;
+const { useEffect, useMemo, useRef, useState } = React;
 
 type MatchStatus = "scheduled" | "live" | "finished";
 type EventType = "goal" | "yellow-card" | "red-card" | "substitution" | "var";
@@ -101,7 +101,7 @@ const SUPABASE_ANON_KEY = "sb_publishable_ipKEtGh_E58Cw50WphccpQ_jIDM6pwv";
 const PREDICTIONS_ENDPOINT = `${SUPABASE_URL}/rest/v1/predictions`;
 const FOOTBALL_DATA_ENDPOINT = `${SUPABASE_URL}/functions/v1/football-data`;
 const ADMIN_CODE = "wk2022";
-const APP_VERSION = "2026.06.13.2";
+const APP_VERSION = "2026.06.13.3";
 const SUPABASE_HEADERS = {
   apikey: SUPABASE_ANON_KEY,
   Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
@@ -818,7 +818,7 @@ function App() {
     () => [...appMatches].sort((a, b) => new Date(a.kickoff).getTime() - new Date(b.kickoff).getTime()),
     [appMatches]
   );
-  const scheduleMatches = sortedMatches.filter((match) => match.status !== "finished");
+  const scheduleMatches = sortedMatches;
 
   const selectedMatch = selectedMatchId ? appMatches.find((match) => match.id === selectedMatchId) ?? null : null;
   const favoriteSet = new Set(favoriteIds);
@@ -1293,10 +1293,66 @@ function UpdatePrompt({ isUpdating, onUpdate }: { isUpdating: boolean; onUpdate:
 }
 
 function ScheduleView(props: MatchListProps) {
+  const nextMatch = props.matches.find((match) => match.status !== "finished");
+  const scrolledToMatchId = useRef<string | null>(null);
+  const [showTodayButton, setShowTodayButton] = useState(false);
+
+  function getNextMatchElement() {
+    return nextMatch ? document.querySelector(`[data-match-id="${nextMatch.id}"]`) : null;
+  }
+
+  function getTargetViewportTop() {
+    const topbar = document.querySelector(".topbar");
+    return (topbar?.getBoundingClientRect().bottom ?? 0) + 10;
+  }
+
+  function scrollToNextMatch() {
+    const nextMatchElement = getNextMatchElement();
+    if (!nextMatchElement) return;
+    const targetTop = nextMatchElement.getBoundingClientRect().top + window.scrollY - getTargetViewportTop();
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+  }
+
+  useEffect(() => {
+    if (!nextMatch) return;
+    if (scrolledToMatchId.current === nextMatch.id) return;
+    scrolledToMatchId.current = nextMatch.id;
+
+    const scrollTimers = [250, 900, 1500].map((delay) => window.setTimeout(scrollToNextMatch, delay));
+    return () => scrollTimers.forEach((timer) => window.clearTimeout(timer));
+  }, [nextMatch?.id]);
+
+  useEffect(() => {
+    if (!nextMatch) {
+      setShowTodayButton(false);
+      return;
+    }
+
+    const updateButtonVisibility = () => {
+      const nextMatchElement = getNextMatchElement();
+      if (!nextMatchElement) return;
+      const distance = Math.abs(nextMatchElement.getBoundingClientRect().top - getTargetViewportTop());
+      setShowTodayButton(distance > 180);
+    };
+
+    updateButtonVisibility();
+    window.addEventListener("scroll", updateButtonVisibility, { passive: true });
+    window.addEventListener("resize", updateButtonVisibility);
+    return () => {
+      window.removeEventListener("scroll", updateButtonVisibility);
+      window.removeEventListener("resize", updateButtonVisibility);
+    };
+  }, [nextMatch?.id]);
+
   return (
     <>
       <SectionTitle title="Speelschema" />
       <MatchList {...props} />
+      {nextMatch && showTodayButton && (
+        <button className="today-jump-button" type="button" onClick={scrollToNextMatch}>
+          Ga naar vandaag
+        </button>
+      )}
     </>
   );
 }
@@ -1333,32 +1389,11 @@ function FavoritesView(props: MatchListProps) {
   );
 }
 
-function ResultsView({ matches, ...rest }: MatchListProps) {
-  const [viewMode, setViewMode] = useState<"results" | "standings">("results");
-  const resultMatches = matches.filter(
-    (match) => isBeforeToday(match.kickoff) || match.status === "live" || match.status === "finished"
-  );
-
+function ResultsView({ matches }: MatchListProps) {
   return (
     <>
-      <ViewTabs
-        items={[
-          { key: "results", label: "Uitslagen" },
-          { key: "standings", label: "Standen" },
-        ]}
-        activeKey={viewMode}
-        onChange={(key) => setViewMode(key as "results" | "standings")}
-      />
-      {viewMode === "results" && resultMatches.length ? (
-        <MatchList matches={resultMatches} {...rest} />
-      ) : viewMode === "results" ? (
-        <EmptyState
-          title="Nog geen uitslagen"
-          text="Het WK 2026 begint op 11 juni. Zodra wedstrijden live zijn of afgelopen, verschijnen ze hier."
-        />
-      ) : (
-        <StandingsOverview matches={matches} />
-      )}
+      <SectionTitle title="Standen" />
+      <StandingsOverview matches={matches} />
     </>
   );
 }
@@ -1510,7 +1545,7 @@ function MatchCard({
   const starTone = isDutchMatch ? "dutch-star" : "";
 
   return (
-    <article className={`match-card ${match.status} ${cardTone}`} onClick={() => onSelectMatch(match.id)}>
+    <article className={`match-card ${match.status} ${cardTone}`} data-match-id={match.id} onClick={() => onSelectMatch(match.id)}>
       <div className="match-meta">
         <span>{formatTime(match.kickoff)}</span>
         <small>{match.stage}</small>
@@ -2218,7 +2253,7 @@ function BottomNav({ activeTab, onChange }: { activeTab: TabKey; onChange: (tab:
   const items: { key: TabKey; label: string; icon?: string; materialIcon?: string }[] = [
     { key: "schedule", label: "Speelschema", materialIcon: "sports_soccer" },
     { key: "favorites", label: "Mijn wedstrijden", icon: "★" },
-    { key: "results", label: "Uitslagen", materialIcon: "sports_score" },
+    { key: "results", label: "Standen", materialIcon: "sports_score" },
     { key: "leaderboard", label: "Scorebord", materialIcon: "crown" },
   ];
 

@@ -613,6 +613,23 @@ button {
   color: #fff;
 }
 
+.today-jump-button {
+  position: fixed;
+  right: max(18px, calc((100vw - 560px) / 2 + 18px));
+  bottom: 72px;
+  z-index: 7;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  border-radius: 999px;
+  background: rgba(23, 27, 33, 0.86);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.2);
+  color: #fff;
+  font-size: 0.84rem;
+  font-weight: 600;
+  backdrop-filter: blur(18px);
+}
+
 .favorites-sections {
   display: grid;
   gap: 12px;
